@@ -688,7 +688,7 @@
         </div>
 
         <!-- ======================================================== -->
-        <!-- NEW: Preparation Tasks & Money / Booking Checklist Box   -->
+        <!-- Preparation Tasks & Money / Booking Checklist Box        -->
         <!-- ======================================================== -->
         <div class="p-4 bg-gradient-to-br from-amber-50/60 to-indigo-50/40 rounded-xl border border-amber-200/90 space-y-3">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1 border-b border-amber-200/60">
@@ -752,7 +752,7 @@
               </select>
             </div>
 
-            <div id="recurrenceSettingsContainer" class="hidden p-2.5 bg-white rounded-lg border border-slate-200 space-y-2">
+            <div id="recurrenceSettingsContainer" class="hidden p-2.5 bg-white rounded-lg border border-slate-200 space-y-2.5">
               <div class="flex items-center space-x-4 text-xs">
                 <label class="flex items-center space-x-1.5 cursor-pointer">
                   <input type="radio" name="recurrenceEndType" value="count" id="recEndTypeCount" class="text-teal-600 focus:ring-teal-500" checked>
@@ -775,6 +775,17 @@
               <div id="recurrenceUntilBox" class="hidden flex items-center space-x-2 pt-0.5">
                 <label for="eventRecurrenceUntil" class="text-[11px] text-slate-600 whitespace-nowrap">終了日:</label>
                 <input type="date" id="eventRecurrenceUntil" class="flex-1 px-3 py-1 rounded-lg border border-slate-300 text-xs font-medium">
+              </div>
+
+              <!-- Voting Period Control for Recurring (First time only toggle) -->
+              <div class="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <label class="flex items-center space-x-2 cursor-pointer select-none">
+                  <input type="checkbox" id="eventVoteFirstOnly" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 cursor-pointer" checked>
+                  <span class="text-xs font-bold text-slate-800">投票期間は初回のみ表示（2回目以降は非表示）</span>
+                </label>
+                <span class="text-[10px] text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded font-bold">
+                  定例会推奨
+                </span>
               </div>
             </div>
           </div>
@@ -846,9 +857,7 @@
           <span class="text-[10px] bg-indigo-200/70 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">定期予定</span>
         </div>
 
-        <!-- ======================================================== -->
-        <!-- NEW: Detail Tasks & Money / Booking Interactive Checklist-->
-        <!-- ======================================================== -->
+        <!-- Interactive Checklist -->
         <div class="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-1.5">
@@ -872,7 +881,7 @@
 
           <!-- Quick Add Task in Detail view -->
           <div class="pt-2 border-t border-amber-200/60 flex items-center gap-2">
-            <input type="text" id="quickDetailTaskInput" placeholder="新しいタスクを入力 (例: バス会社へ支払い)" class="flex-1 px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500">
+            <input type="text" id="quickDetailTaskInput" placeholder="新しいタスクを入力 (例: 会場予約確認、資料印刷)" class="flex-1 px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500">
             <button type="button" id="quickAddDetailTaskBtn" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition shrink-0 shadow-xs">
               追加
             </button>
@@ -994,7 +1003,7 @@
             <i class="fa-solid fa-circle-info mr-1 text-teal-600"></i>
             印刷最適化について
           </div>
-          A4横向きに最適化されたカレンダーと予定一覧、およびタスク状況が出力されます。
+          A4横向きに最適化されたカレンダーと予定一覧、およびタスク状況が出力されます。定例会の2回目以降はカレンダーがスッキリするよう、投票帯は初回のみに調整されます。
         </div>
 
         <div class="space-y-2 pt-1">
@@ -1027,39 +1036,39 @@
 
       <div class="p-6 overflow-y-auto space-y-6 text-slate-700 text-xs sm:text-sm leading-relaxed">
         <div class="space-y-2">
-          <h4 class="font-bold text-amber-950 text-sm flex items-center">
-            <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 inline-flex items-center justify-center text-xs font-bold mr-2">1</span>
-            準備タスク＆集金・支払いの管理（新機能）
+          <h4 class="font-bold text-teal-950 text-sm flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-100 text-teal-700 inline-flex items-center justify-center text-xs font-bold mr-2">1</span>
+            定例会・週次ミーティングの投票期間表示（初回のみ）
           </h4>
           <p class="text-slate-600">
-            学祭や合宿などの各イベントに、<strong>「全体告知」「場所・宿の決定」「参加費・予算決定」「集金締切」「施設・バスへの支払い」</strong>などのタスクを自由に追加・編集できます。「合宿セット」「学祭セット」のワンタップボタンを押すと、本番日程から自動逆算した日付で定番タスクが一括登録されます。
+            定例会（毎週・隔週・毎月）の予定では、カレンダーが投票帯だらけになるのを防ぐため、<strong>「投票期間は初回のみ表示（2回目以降は非表示）」</strong>がデフォルトで有効になっています。2回目以降は定例の本番日のみがスッキリ表示されます。
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-bold text-amber-950 text-sm flex items-center">
+            <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 inline-flex items-center justify-center text-xs font-bold mr-2">2</span>
+            準備タスク＆集金・支払いの管理
+          </h4>
+          <p class="text-slate-600">
+            学祭や合宿などの各イベントに、<strong>「全体告知」「場所手配」「参加費決定」「集金」「施設支払い」</strong>などのタスクを自由に追加・管理できます。ワンタップテンプレで一括登録も可能です。
           </p>
         </div>
 
         <div class="space-y-2">
           <h4 class="font-bold text-emerald-950 text-sm flex items-center">
-            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 inline-flex items-center justify-center text-xs font-bold mr-2">2</span>
+            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 inline-flex items-center justify-center text-xs font-bold mr-2">3</span>
             シート出力機能（スプレッドシート＆Excel直貼り）
           </h4>
           <p class="text-slate-600">
-            ヘッダーの「シート出力」から、行事日程・投票期間だけでなく<strong>準備タスクの進捗状況</strong>も含めた一覧をプレビュー＆コピーできます。Googleスプレッドシートへの貼り付けやCSV出力に対応しています。
-          </p>
-        </div>
-
-        <div class="space-y-2">
-          <h4 class="font-bold text-indigo-950 text-sm flex items-center">
-            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 inline-flex items-center justify-center text-xs font-bold mr-2">3</span>
-            恒例行事プリセットからの一括展開
-          </h4>
-          <p class="text-slate-600">
-            毎年恒例の行事マスターには、出欠投票期間に加えて「集金」や「支払い」の標準タスクがあらかじめ設定されています。新年度の幹部交代時にワンクリックで年間行事とToDoを展開できます。
+            登録された日程・投票期間・準備タスクの進捗状況をGoogleスプレッドシートやExcelに一括コピー（TSV形式）またはCSVダウンロードできます。
           </p>
         </div>
 
         <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
           <div class="text-xs text-amber-900">
             <span class="font-bold block">💡 動作を試してみたい方へ</span>
-            タスク（集金・告知・場所決め）がセットされたサンプル行事を読み込めます。
+            定例会（初回のみ投票帯）やタスクがセットされたサンプルを読み込めます。
           </div>
           <button id="loadSampleDataBtn" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-sm shrink-0 ml-3">
             サンプル予定を読み込む
@@ -1097,7 +1106,7 @@
         <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
           <div class="font-bold text-slate-800 flex items-center justify-between">
             <span>① データを保存・書き出し</span>
-            <span class="text-[10px] text-teal-600 font-semibold">JSON形式 (タスク・プリセット含む)</span>
+            <span class="text-[10px] text-teal-600 font-semibold">JSON形式</span>
           </div>
           <p class="text-[11px] text-slate-500">現在の全データ（タスク含む）をファイル保存します。</p>
           <button id="exportDataBtn" class="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition flex items-center justify-center space-x-1.5 shadow-sm">
@@ -1193,7 +1202,7 @@
       other:    { name: 'その他ToDo',       icon: 'fa-check',          bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-300' }
     };
 
-    /* Standard Default Annual Routines with built-in default task templates */
+    /* Standard Default Annual Routines */
     const DEFAULT_ANNUAL_PRESETS = [
       {
         id: 'annual-1',
@@ -1306,7 +1315,7 @@
       }
     ];
 
-    /* Common Task Template Presets for one-click insertion in Event Modal */
+    /* Common Task Template Presets */
     const QUICK_TASK_TEMPLATES = {
       camp: [
         { title: '宿・施設の候補選定と場所予約', offsetDays: 45, category: 'place', assignee: '合宿係' },
@@ -1355,7 +1364,6 @@
       annualPresets = JSON.parse(JSON.stringify(DEFAULT_ANNUAL_PRESETS));
     }
 
-    // Temporary tasks buffer during Event Modal editing
     let currentModalTasks = [];
 
     function saveEventsToStorage() {
@@ -1399,6 +1407,27 @@
       other:    { name: 'イベント',       bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
     };
 
+    /* Check whether voting period should be displayed for this occurrence */
+    function hasVotePeriodForOccurrence(evt) {
+      // 単発イベントは常に投票期間あり
+      if (!evt.isRecurringInstance || !evt.recurrence || evt.recurrence === 'none') {
+        return true;
+      }
+      // 繰り返しの初回（1回目）は常に投票期間あり
+      if (!evt.occurrenceIndex || evt.occurrenceIndex === 1) {
+        return true;
+      }
+      // 2回目以降：明示的に voteFirstOnly が設定されているか、定例会なら初回のみを既定とする
+      if (evt.voteFirstOnly === true) {
+        return false;
+      }
+      if (evt.voteFirstOnly === false) {
+        return true;
+      }
+      // 未設定（後方互換）：定例会(meeting)ならデフォルトで初回のみ（2回目以降は非表示）
+      return evt.category !== 'meeting';
+    }
+
     /* Expand recurring events into individual occurrences for rendering */
     function getExpandedOccurrences(startDate, endDate) {
       const occurrences = [];
@@ -1434,7 +1463,6 @@
           const curDateStr = formatDateStr(cur);
 
           if (!deletedDates.includes(curDateStr)) {
-            // Recalculate task due dates for this specific recurring occurrence based on offset
             const instanceTasks = rawTasks.map(t => {
               const diffFromRoot = t.dueDate ? diffInDays(parseDateStr(t.dueDate), rootDate) : (t.offset || 0);
               const instDueDate = formatDateStr(addDays(cur, -diffFromRoot));
@@ -1501,11 +1529,9 @@
     }
 
     function getEventStatus(evt) {
-      const { eventDate, voteStartDate, voteEndDate } = getEventTimeline(evt);
+      const eDate = parseDateStr(evt.eventDate);
+      const evtTime = eDate.getTime();
       const todayTime = simulatedToday.getTime();
-      const sTime = voteStartDate.getTime();
-      const eTime = voteEndDate.getTime();
-      const evtTime = eventDate.getTime();
 
       if (todayTime > evtTime) {
         return { key: 'finished', label: 'イベント終了', badgeClass: 'bg-slate-100 text-slate-500 border-slate-200' };
@@ -1513,6 +1539,21 @@
       if (todayTime === evtTime) {
         return { key: 'event-day', label: '本日が本番！', badgeClass: 'bg-amber-500 text-white font-bold animate-bounce' };
       }
+
+      // 投票期間が初回のみで、2回目以降のインスタンスの場合
+      if (!hasVotePeriodForOccurrence(evt)) {
+        const leftDays = Math.ceil((evtTime - todayTime) / (1000 * 60 * 60 * 24));
+        return {
+          key: 'regular-meeting',
+          label: `定例（あと${leftDays}日）`,
+          badgeClass: 'bg-blue-50 text-blue-700 border-blue-200 font-semibold'
+        };
+      }
+
+      const { voteStartDate, voteEndDate } = getEventTimeline(evt);
+      const sTime = voteStartDate.getTime();
+      const eTime = voteEndDate.getTime();
+
       if (todayTime > eTime) {
         const leftDays = Math.ceil((evtTime - todayTime) / (1000 * 60 * 60 * 24));
         return { key: 'vote-ended', label: `投票締切済 (本番まで${leftDays}日)`, badgeClass: 'bg-purple-100 text-purple-700 border-purple-200' };
@@ -1528,7 +1569,6 @@
       return { key: 'upcoming-vote', label: `投票開始まで${waitDays}日`, badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' };
     }
 
-    /* Helper: Task statistics for an event */
     function getEventTaskStats(evt) {
       const tasks = evt.tasks || [];
       const total = tasks.length;
@@ -1622,7 +1662,6 @@
           const cellBg = document.createElement('div');
           const isSimulatedToday = (dayInfo.dateStr === todayStr);
 
-          // Find tasks due on this cell date
           const tasksOnThisDay = [];
           activeOccurrences.forEach(evt => {
             (evt.tasks || []).forEach(tsk => {
@@ -1662,7 +1701,6 @@
 
           header.appendChild(numSpan);
 
-          // Task icons container in cell corner
           if (tasksOnThisDay.length > 0) {
             const taskBadge = document.createElement('div');
             taskBadge.className = 'flex items-center space-x-1';
@@ -1707,8 +1745,10 @@
           const voteStartTime = timeline.voteStartDate.getTime();
           const voteEndTime = timeline.voteEndDate.getTime();
           const evtTime = timeline.eventDate.getTime();
+          const showVote = hasVotePeriodForOccurrence(evt);
 
-          if (voteStartTime <= weekEndTime && voteEndTime >= weekStartTime) {
+          // Only render voting bar if enabled for this occurrence (e.g. only first time for regular meetings)
+          if (showVote && voteStartTime <= weekEndTime && voteEndTime >= weekStartTime) {
             let startCol = 0;
             let endCol = 6;
             let isActualStart = false;
@@ -1750,6 +1790,7 @@
             });
           }
 
+          // Render event day bar
           if (evtTime >= weekStartTime && evtTime <= weekEndTime) {
             const col = Math.round((evtTime - weekStartTime) / (1000 * 60 * 60 * 24));
             if (col >= 0 && col <= 6) {
@@ -1823,15 +1864,18 @@
             const taskIcon = taskStats.total > 0 ? `<span class="ml-1 text-[9px] opacity-90 font-mono">(${taskStats.completed}/${taskStats.total})</span>` : '';
 
             if (item.type === 'event-day') {
+              const isRegularOnly = !hasVotePeriodForOccurrence(item.evt);
+              const labelTag = isRegularOnly ? '定例' : '本番';
+
               bar.className = `pointer-events-auto cursor-pointer bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold flex items-center justify-between shadow-sm transition truncate ${highlightClass}`;
               bar.innerHTML = `
                 <span class="truncate flex items-center">
-                  <i class="fa-solid fa-flag-checkered mr-1 text-amber-200"></i>
+                  <i class="${isRegularOnly ? 'fa-solid fa-calendar-day' : 'fa-solid fa-flag-checkered'} mr-1 text-amber-200"></i>
                   ${repeatIcon}
                   ${item.evt.title}
                   ${taskIcon}
                 </span>
-                <span class="text-[9px] bg-amber-700/60 px-1 rounded ml-1 hidden sm:inline">本番</span>
+                <span class="text-[9px] bg-amber-700/60 px-1 rounded ml-1 hidden sm:inline">${labelTag}</span>
               `;
             } else {
               const isStartRounded = item.isActualStart ? 'rounded-l-md ml-0.5' : 'rounded-l-none border-l-0';
@@ -1990,6 +2034,7 @@
         const isRecurring = evt.recurrence && evt.recurrence !== 'none';
         const isSelected = (highlightedInstanceId === evt.instanceId);
         const taskStats = getEventTaskStats(evt);
+        const showVote = hasVotePeriodForOccurrence(evt);
 
         const card = document.createElement('div');
         const activeClasses = isSelected
@@ -2012,7 +2057,6 @@
             <i class="fa-solid fa-arrows-rotate mr-1 text-[9px]"></i>定期 #${evt.occurrenceIndex || 1}
           </span>` : '';
 
-        // Task progress badge & upcoming pending tasks summary
         let taskSnippet = '';
         if (taskStats.total > 0) {
           const urgentTask = taskStats.pendingTasks[0];
@@ -2040,6 +2084,18 @@
           `;
         }
 
+        const voteInfoHtml = showVote ? `
+          <div>
+            <span class="text-slate-400 block text-[9px]">投票期間:</span>
+            <span class="font-bold text-teal-800"><i class="fa-regular fa-calendar-check text-teal-600 mr-1"></i>${timeline.startDateStr} 〜 ${timeline.endDateStr}</span>
+          </div>` : `
+          <div>
+            <span class="text-slate-400 block text-[9px]">投票期間:</span>
+            <span class="text-slate-500 font-medium"><i class="fa-solid fa-check mr-1 text-slate-400"></i>初回のみ実施済（投票不要）</span>
+          </div>`;
+
+        const footerVotingPeriod = showVote ? `受付: ${timeline.daysTotalVoting}日間 (猶予${timeline.prepDays}日)` : `定例開催 (事前投票なし)`;
+
         card.innerHTML = `
           <div class="flex items-start justify-between gap-2">
             <div>
@@ -2060,12 +2116,9 @@
           </div>
 
           <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+            ${voteInfoHtml}
             <div>
-              <span class="text-slate-400 block text-[9px]">投票期間:</span>
-              <span class="font-bold text-teal-800"><i class="fa-regular fa-calendar-check text-teal-600 mr-1"></i>${timeline.startDateStr} 〜 ${timeline.endDateStr}</span>
-            </div>
-            <div>
-              <span class="text-slate-400 block text-[9px]">本番日:</span>
+              <span class="text-slate-400 block text-[9px]">開催日:</span>
               <span class="font-bold text-amber-900"><i class="fa-solid fa-flag-checkered text-amber-500 mr-1"></i>${evt.eventDate}</span>
             </div>
           </div>
@@ -2073,7 +2126,7 @@
           ${taskSnippet}
 
           <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100/70">
-            <span>受付: ${timeline.daysTotalVoting}日間 (準備猶予${timeline.prepDays}日)</span>
+            <span>${footerVotingPeriod}</span>
             <div class="flex items-center space-x-1.5">
               <button type="button" class="view-detail-btn px-2.5 py-1 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-700 font-semibold rounded-md transition" title="詳細・タスク管理と告知文コピー">
                 <i class="fa-solid fa-circle-info mr-1"></i>詳細・タスク
@@ -2156,6 +2209,7 @@
         const status = getEventStatus(evt);
         const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
         const taskStats = getEventTaskStats(evt);
+        const showVote = hasVotePeriodForOccurrence(evt);
 
         const pendingTaskSummary = taskStats.pendingTasks.map(t => {
           const cat = TASK_CATEGORIES[t.category] || TASK_CATEGORIES.other;
@@ -2164,6 +2218,11 @@
 
         const row = document.createElement('tr');
         row.className = idx % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/50 hover:bg-slate-50';
+
+        const votePeriodCell = showVote 
+          ? `${timeline.startDateStr} 〜 ${timeline.endDateStr}`
+          : `<span class="text-slate-400">- (初回のみ実施)</span>`;
+        const prepCell = showVote ? `${timeline.prepDays}日間` : `-`;
 
         row.innerHTML = `
           <td class="p-3 border-r border-slate-200 text-slate-400 font-mono text-center">${idx + 1}</td>
@@ -2174,8 +2233,8 @@
             </span>
           </td>
           <td class="p-3 border-r border-slate-200 font-bold text-amber-900 bg-amber-50/30 whitespace-nowrap">${evt.eventDate}</td>
-          <td class="p-3 border-r border-slate-200 text-teal-900 bg-teal-50/30 font-medium whitespace-nowrap">${timeline.startDateStr} 〜 ${timeline.endDateStr}</td>
-          <td class="p-3 border-r border-slate-200 text-center font-bold text-indigo-700">${timeline.prepDays}日間</td>
+          <td class="p-3 border-r border-slate-200 text-teal-900 bg-teal-50/30 font-medium whitespace-nowrap">${votePeriodCell}</td>
+          <td class="p-3 border-r border-slate-200 text-center font-bold text-indigo-700">${prepCell}</td>
           <td class="p-3 border-r border-slate-200 text-center font-semibold">
             ${taskStats.total > 0 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${taskStats.completed === taskStats.total ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}">${taskStats.completed} / ${taskStats.total} (${taskStats.percent}%)</span>` : '<span class="text-slate-400">-</span>'}
           </td>
@@ -2210,6 +2269,7 @@
         const status = getEventStatus(evt);
         const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
         const taskStats = getEventTaskStats(evt);
+        const showVote = hasVotePeriodForOccurrence(evt);
 
         const cleanNotes = (evt.notes || '').replace(/[\r\n\t]/g, ' ');
         const cleanLocation = (evt.location || '').replace(/[\r\n\t]/g, ' ');
@@ -2220,10 +2280,10 @@
           evt.title,
           catStyle.name,
           evt.eventDate,
-          timeline.startDateStr,
-          timeline.endDateStr,
-          `${timeline.daysTotalVoting}日間`,
-          `${timeline.prepDays}日間`,
+          showVote ? timeline.startDateStr : '初回のみ',
+          showVote ? timeline.endDateStr : '初回のみ',
+          showVote ? `${timeline.daysTotalVoting}日間` : '-',
+          showVote ? `${timeline.prepDays}日間` : '-',
           taskStats.total > 0 ? `${taskStats.completed}/${taskStats.total}完了(${taskStats.percent}%)` : 'なし',
           pendingTasksText,
           cleanLocation,
@@ -2270,6 +2330,7 @@
         const status = getEventStatus(evt);
         const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
         const taskStats = getEventTaskStats(evt);
+        const showVote = hasVotePeriodForOccurrence(evt);
         const pendingTasksText = taskStats.pendingTasks.map(t => `${t.title}(${t.dueDate || '期日未定'})`).join('; ') || '残タスクなし';
 
         const row = [
@@ -2277,10 +2338,10 @@
           evt.title,
           catStyle.name,
           evt.eventDate,
-          timeline.startDateStr,
-          timeline.endDateStr,
-          `${timeline.daysTotalVoting}日間`,
-          `${timeline.prepDays}日間`,
+          showVote ? timeline.startDateStr : '初回のみ',
+          showVote ? timeline.endDateStr : '初回のみ',
+          showVote ? `${timeline.daysTotalVoting}日間` : '-',
+          showVote ? `${timeline.prepDays}日間` : '-',
           taskStats.total > 0 ? `${taskStats.completed}/${taskStats.total} (${taskStats.percent}%)` : '0%',
           pendingTasksText,
           evt.location || '',
@@ -2301,74 +2362,6 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showToast('Excel対応CSVファイルをダウンロードしました');
-    });
-
-    /* Print Sheet Table directly */
-    document.getElementById('printSheetTableBtn').addEventListener('click', () => {
-      const dataset = getSheetDataset();
-      const printWindow = window.open('', '_blank', 'width=1150,height=800');
-      if (!printWindow) {
-        showToast('ポップアップを許可してください', 'error');
-        return;
-      }
-
-      const rowsHtml = dataset.map((evt, idx) => {
-        const tl = getEventTimeline(evt);
-        const cat = (CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other).name;
-        const ts = getEventTaskStats(evt);
-        return `
-          <tr>
-            <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${idx + 1}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold;">${evt.title}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px;">${cat}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold; color:#92400e;">${evt.eventDate}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px; color:#065f46;">${tl.startDateStr} 〜 ${tl.endDateStr}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px; text-align:center; font-weight:bold;">${tl.prepDays}日</td>
-            <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${ts.total > 0 ? `${ts.completed}/${ts.total} (${ts.percent}%)` : '-'}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px; font-size:10px;">${ts.pendingTasks.map(t => t.title).join(', ') || '完了'}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px;">${evt.location || '-'}</td>
-            <td style="border:1px solid #cbd5e1; padding:6px;">${evt.notes || '-'}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const printHtml = `
-        <!DOCTYPE html>
-        <html lang="ja">
-        <head>
-          <meta charset="UTF-8">
-          <title>サークル年間スケジュール＆タスク進捗シート</title>
-          <style>
-            body { font-family: sans-serif; font-size: 11px; padding: 20px; color: #1e293b; }
-            h1 { font-size: 18px; margin-bottom: 4px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-            th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px; font-size: 11px; text-align: left; }
-            @page { size: A4 landscape; margin: 8mm; }
-          </style>
-        </head>
-        <body>
-          <h1>サークル日程・出欠投票＆準備タスク一覧シート</h1>
-          <p>出力日: ${formatJapaneseDate(new Date())} | 全${dataset.length}件</p>
-          <table>
-            <thead>
-              <tr>
-                <th>No</th><th>イベント名</th><th>区分</th><th>本番日程</th><th>投票期間</th><th>猶予</th><th>タスク</th><th>主な残タスク</th><th>会場</th><th>備考</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
-          <script>
-            window.onload = function() { window.print(); };
-          <\/script>
-        </body>
-        </html>
-      `;
-
-      printWindow.document.open();
-      printWindow.document.write(printHtml);
-      printWindow.document.close();
     });
 
     /* ========================================================= */
@@ -2484,7 +2477,6 @@
       const voteStartDate = formatDateStr(addDays(eventDate, -preset.startOffset));
       const voteEndDate = formatDateStr(addDays(eventDate, -preset.endOffset));
 
-      // Calculate tasks with dates from offset
       const calculatedTasks = (preset.tasks || []).map((t, idx) => {
         const offset = (t.offset !== undefined) ? t.offset : 14;
         const taskDueDate = formatDateStr(addDays(eventDate, -offset));
@@ -2520,7 +2512,6 @@
       showToast(`${targetYear}年度に「${preset.title}」（タスク${calculatedTasks.length}件含）を登録しました！`);
     }
 
-    /* Apply all annual presets */
     document.getElementById('applyAllAnnualPresetsBtn').addEventListener('click', () => {
       const targetYear = parseInt(document.getElementById('annualTargetYear').value, 10);
       if (annualPresets.length === 0) {
@@ -2715,7 +2706,6 @@
           </div>
         `;
 
-        // Bind Row Inputs
         const catSelect = row.querySelector('.task-category-select');
         const titleInput = row.querySelector('.task-title-input');
         const dateInput = row.querySelector('.task-date-input');
@@ -2736,7 +2726,6 @@
       });
     }
 
-    // Add new blank task row
     document.getElementById('addNewTaskRowBtn').addEventListener('click', () => {
       const eDateVal = document.getElementById('eventDate').value;
       const defaultDueDate = eDateVal ? formatDateStr(addDays(parseDateStr(eDateVal), -7)) : formatDateStr(simulatedToday);
@@ -2752,7 +2741,6 @@
       renderModalTasksList();
     });
 
-    // Template Insertions
     function applyTasksTemplate(type) {
       const tmpl = QUICK_TASK_TEMPLATES[type];
       if (!tmpl) return;
@@ -2808,7 +2796,6 @@
     document.getElementById('closeAnnualModalBtn').addEventListener('click', () => document.getElementById('annualModal').classList.add('hidden'));
     document.getElementById('closeAnnualModalBtn2').addEventListener('click', () => document.getElementById('annualModal').classList.add('hidden'));
 
-    /* Bi-directional synchronizer for Event Modal */
     function syncDatesFromOffsets() {
       const eventDateStr = document.getElementById('eventDate').value;
       if (!eventDateStr) return;
@@ -2885,7 +2872,6 @@
       }
     }
 
-    /* Event Form Handlers */
     document.getElementById('voteStartDateInput').addEventListener('change', syncOffsetsFromDates);
     document.getElementById('voteEndDateInput').addEventListener('change', syncOffsetsFromDates);
 
@@ -2912,7 +2898,6 @@
       syncDatesFromOffsets();
     });
 
-    // Preset Buttons in Event Form
     document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const presetKey = e.currentTarget.getAttribute('data-preset');
@@ -2921,10 +2906,21 @@
           document.getElementById('startOffsetSlider').value = p.startOffset;
           document.getElementById('endOffsetSlider').value = p.endOffset;
           document.getElementById('eventCategory').value = presetKey;
+          
+          if (presetKey === 'meeting') {
+            document.getElementById('eventVoteFirstOnly').checked = true;
+          }
+          
           syncDatesFromOffsets();
           showToast(`プリセット「${p.name}」を適用しました`);
         }
       });
+    });
+
+    document.getElementById('eventCategory').addEventListener('change', (e) => {
+      if (e.target.value === 'meeting') {
+        document.getElementById('eventVoteFirstOnly').checked = true;
+      }
     });
 
     function updateRecurrenceOptionsLabel() {
@@ -2979,6 +2975,7 @@
       document.getElementById('recEndTypeCount').checked = true;
       document.getElementById('eventRecurrenceCount').value = '10';
       document.getElementById('eventRecurrenceUntil').value = '';
+      document.getElementById('eventVoteFirstOnly').checked = true;
       updateRecurrenceOptionsLabel();
 
       document.getElementById('startOffsetSlider').value = 30;
@@ -2987,7 +2984,6 @@
       document.getElementById('eventNotes').value = '';
       document.getElementById('deleteEventBtn').classList.add('hidden');
 
-      // Default tasks for a new event
       currentModalTasks = [
         { id: 't-init-1', title: '出欠投票の告知＆周知', category: 'announce', dueDate: formatDateStr(addDays(parseDateStr(defaultDate), -30)), assignee: '広報', completed: false },
         { id: 't-init-2', title: '場所・会場の確定と予約', category: 'place', dueDate: formatDateStr(addDays(parseDateStr(defaultDate), -20)), assignee: '担当係', completed: false },
@@ -3017,6 +3013,10 @@
       document.getElementById('recEndTypeUntil').checked = !isCount;
       document.getElementById('eventRecurrenceCount').value = evt.recurrenceCount || 10;
       document.getElementById('eventRecurrenceUntil').value = evt.recurrenceUntil || '';
+      
+      // Load voteFirstOnly
+      document.getElementById('eventVoteFirstOnly').checked = (evt.voteFirstOnly !== undefined) ? evt.voteFirstOnly : (evt.category === 'meeting');
+      
       updateRecurrenceOptionsLabel();
 
       if (evt.voteStartDate && evt.voteEndDate) {
@@ -3033,7 +3033,6 @@
       document.getElementById('eventNotes').value = evt.notes || '';
       document.getElementById('deleteEventBtn').classList.remove('hidden');
 
-      // Clone existing tasks into modal editing buffer
       currentModalTasks = JSON.parse(JSON.stringify(evt.tasks || []));
       renderModalTasksList();
 
@@ -3106,7 +3105,6 @@
           </div>
         `;
 
-        // Checkbox Toggle
         const chk = item.querySelector('.task-checkbox');
         chk.onchange = () => {
           task.completed = chk.checked;
@@ -3117,7 +3115,6 @@
           showToast(`タスク「${task.title}」を${task.completed ? '完了' : '未完了'}にしました`);
         };
 
-        // Delete single task
         item.querySelector('.delete-task-in-detail-btn').onclick = () => {
           currentDetailEvt.tasks.splice(index, 1);
           syncTaskChangeToMasterEvent(currentDetailEvt);
@@ -3140,7 +3137,6 @@
       }
     }
 
-    // Quick add task inside Detail Modal
     document.getElementById('quickAddDetailTaskBtn').addEventListener('click', () => {
       const input = document.getElementById('quickDetailTaskInput');
       const val = input.value.trim();
@@ -3170,15 +3166,23 @@
 
       const timeline = getEventTimeline(evt);
       const status = getEventStatus(evt);
+      const showVote = hasVotePeriodForOccurrence(evt);
 
       document.getElementById('detailTitle').textContent = evt.title;
       document.getElementById('detailBadge').className = `text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${status.badgeClass}`;
       document.getElementById('detailBadge').textContent = status.label;
 
-      document.getElementById('detailEventDate').textContent = `${evt.eventDate} (本番)`;
-      document.getElementById('detailVotePeriod').textContent = `${timeline.startDateStr} 〜 ${timeline.endDateStr}`;
+      document.getElementById('detailEventDate').textContent = `${evt.eventDate} (${showVote ? '本番' : '定例開催'})`;
+      
+      if (showVote) {
+        document.getElementById('detailVotePeriod').textContent = `${timeline.startDateStr} 〜 ${timeline.endDateStr}`;
+        document.getElementById('detailPrepDays').textContent = `締切から本番まで ${timeline.prepDays} 日間`;
+      } else {
+        document.getElementById('detailVotePeriod').textContent = `なし (初回のみ実施)`;
+        document.getElementById('detailPrepDays').textContent = `定例開催（投票不要）`;
+      }
+
       document.getElementById('detailLocation').textContent = evt.location || '未設定';
-      document.getElementById('detailPrepDays').textContent = `締切から本番まで ${timeline.prepDays} 日間`;
       document.getElementById('detailNotes').textContent = evt.notes || '備考はありません。';
 
       const recBadgeBox = document.getElementById('detailRecurrenceBadgeContainer');
@@ -3197,12 +3201,14 @@
         } else if (evt.recurrenceCount) {
           recLabel += ` (全${evt.recurrenceCount}回)`;
         }
+        if (!showVote) {
+          recLabel += ` [投票期間: 初回のみ]`;
+        }
         recText.textContent = recLabel;
       } else {
         recBadgeBox.classList.add('hidden');
       }
 
-      // Render Tasks checklist inside detail
       renderDetailTasksInteractive();
 
       const templateText = generateNotificationText(evt, timeline, status);
@@ -3212,19 +3218,25 @@
     }
 
     function generateNotificationText(evt, timeline, status) {
+      const showVote = hasVotePeriodForOccurrence(evt);
       const today = simulatedToday;
       const endDate = timeline.voteEndDate;
       const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
-      let deadlineNotice = `締切：${timeline.endDateStr} 23:59`;
-      if (diffDays > 0) {
-        deadlineNotice += `（あと${diffDays}日！）`;
-      } else if (diffDays === 0) {
-        deadlineNotice += `（本日締切！！）`;
+      
+      let deadlineNotice = '';
+      if (showVote) {
+        deadlineNotice = `締切：${timeline.endDateStr} 23:59`;
+        if (diffDays > 0) {
+          deadlineNotice += `（あと${diffDays}日！）`;
+        } else if (diffDays === 0) {
+          deadlineNotice += `（本日締切！！）`;
+        } else {
+          deadlineNotice += `（締切済）`;
+        }
       } else {
-        deadlineNotice += `（締切済）`;
+        deadlineNotice = `※定例開催のため出欠投票期間はありません（欠席等の連絡は個別にお願いします）`;
       }
 
-      // Format pending critical tasks (money, booking, announcements)
       const tasks = evt.tasks || [];
       const pendingMoney = tasks.filter(t => t.category === 'money' && !t.completed);
       let taskAnnouncement = '';
@@ -3233,14 +3245,18 @@
           pendingMoney.map(t => `・${t.title} (期日: ${t.dueDate || '随時'}) [担当: ${t.assignee || '会計'}]`).join('\n') + `\n`;
       }
 
+      const votePeriodLine = showVote 
+        ? `■ 投票期間：${timeline.startDateStr} 〜 ${timeline.endDateStr}\n`
+        : `■ 投票期間：なし（定例開催）\n`;
+
       return `📢【サークル日程＆出欠確認のお知らせ】\n` +
              `━━━━━━━━━━━━━━━━━━\n` +
              `■ イベント：${evt.title}\n` +
              `■ 本番日程：${evt.eventDate}\n` +
-             `■ 投票期間：${timeline.startDateStr} 〜 ${timeline.endDateStr}\n` +
+             `${votePeriodLine}` +
              `■ 会場・場所：${evt.location || '未定'}\n` +
              `━━━━━━━━━━━━━━━━━━\n` +
-             `予約や準備シフトの確定のため、期日までに投票のご協力をお願いします！\n\n` +
+             (showVote ? `予約や準備シフトの確定のため、期日までに投票のご協力をお願いします！\n\n` : `定期開催の定例ミーティングです。アジェンダや時間をご確認ください。\n\n`) +
              `🕒 ${deadlineNotice}\n` +
              `${taskAnnouncement}` +
              `📝 備考：${evt.notes || 'よろしくお願いいたします。'}\n` +
@@ -3259,6 +3275,7 @@
       const recurrenceEndType = document.getElementById('recEndTypeCount').checked ? 'count' : 'until';
       const recurrenceCount = parseInt(document.getElementById('eventRecurrenceCount').value, 10) || 10;
       const recurrenceUntil = document.getElementById('eventRecurrenceUntil').value;
+      const voteFirstOnly = document.getElementById('eventVoteFirstOnly').checked;
       const location = document.getElementById('eventLocation').value.trim();
       const notes = document.getElementById('eventNotes').value.trim();
 
@@ -3278,7 +3295,6 @@
       const startOffset = diffInDays(sDate, eDate);
       const endOffset = diffInDays(enDate, eDate);
 
-      // Save tasks from buffer
       const tasksToSave = currentModalTasks.filter(t => t.title && t.title.trim() !== '');
 
       if (id) {
@@ -3293,6 +3309,7 @@
           evt.recurrenceEndType = recurrenceEndType;
           evt.recurrenceCount = recurrenceCount;
           evt.recurrenceUntil = (recurrence !== 'none' && recurrenceEndType === 'until') ? recurrenceUntil : null;
+          evt.voteFirstOnly = voteFirstOnly;
           evt.startOffset = startOffset;
           evt.endOffset = endOffset;
           evt.location = location;
@@ -3312,6 +3329,7 @@
           recurrenceEndType,
           recurrenceCount,
           recurrenceUntil: (recurrence !== 'none' && recurrenceEndType === 'until') ? recurrenceUntil : null,
+          voteFirstOnly: voteFirstOnly,
           deletedOccurrences: [],
           startOffset,
           endOffset,
@@ -3516,6 +3534,8 @@
               ${monthEvents.map(evt => {
                 const tl = getEventTimeline(evt);
                 const ts = getEventTaskStats(evt);
+                const showVote = hasVotePeriodForOccurrence(evt);
+                const voteStr = showVote ? `投票: ${tl.startDateStr} 〜 ${tl.endDateStr}` : `定例開催（投票なし）`;
                 return `
                   <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
                     <div>
@@ -3526,7 +3546,7 @@
                       <div class="text-[11px] text-slate-500">${evt.location ? '場所: ' + evt.location : ''}</div>
                     </div>
                     <div class="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                      <span class="text-teal-800 font-bold"><i class="fa-regular fa-clock mr-1 text-teal-600"></i>投票: ${tl.startDateStr} 〜 ${tl.endDateStr}</span>
+                      <span class="text-teal-800 font-bold"><i class="fa-regular fa-clock mr-1 text-teal-600"></i>${voteStr}</span>
                       <span class="text-amber-800 font-bold"><i class="fa-solid fa-flag-checkered mr-1 text-amber-500"></i>本番: ${evt.eventDate}</span>
                     </div>
                   </div>
@@ -3615,10 +3635,10 @@
       });
     });
 
-    /* Export JSON Data (Events + Tasks + Presets) */
+    /* Export JSON Data */
     document.getElementById('exportDataBtn').addEventListener('click', () => {
       const payload = {
-        version: '3.0',
+        version: '3.1',
         exportedAt: new Date().toISOString(),
         events: events,
         annualPresets: annualPresets
@@ -3727,10 +3747,11 @@
           category: 'meeting',
           recurrence: 'weekly',
           recurrenceUntil: formatDateStr(new Date(curYear, curMonth + 2, 28)),
+          voteFirstOnly: true, // 初回のみ投票期間を表示
           startOffset: 7,
           endOffset: 2,
           location: '学生会館 第3会議室 / Zoom',
-          notes: '資料作成とアジェンダ確定のため、2日前までに参加可否をご回答ください。',
+          notes: '資料作成とアジェンダ確定のため、初回の開催日決定時のみ出欠投票を実施しています。',
           tasks: [
             { id: 'tsk-s2-1', title: 'アジェンダ共有と告知', category: 'announce', dueDate: formatDateStr(new Date(curYear, curMonth, 17)), assignee: '書記', completed: false }
           ]
