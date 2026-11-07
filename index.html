@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- 検索エンジンにインデックスさせない設定 (Google, Yahoo! 等で検索結果に出ないようにする) -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+  <!-- 外部遷移時のリファラー情報漏洩防止 -->
+  <meta name="referrer" content="no-referrer">
+
   <title>CircleSync - サークル日程・恒例イベント・準備タスク＆集金管理シート</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -567,7 +574,7 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- 4. Event Modal (Create / Edit + TASKS)      -->
+  <!-- 4. Event Modal (Create / Edit + TASKS)     -->
   <!-- ========================================== -->
   <div id="eventModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
     <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in flex flex-col max-h-[92vh]">
@@ -1409,22 +1416,18 @@
 
     /* Check whether voting period should be displayed for this occurrence */
     function hasVotePeriodForOccurrence(evt) {
-      // 単発イベントは常に投票期間あり
       if (!evt.isRecurringInstance || !evt.recurrence || evt.recurrence === 'none') {
         return true;
       }
-      // 繰り返しの初回（1回目）は常に投票期間あり
       if (!evt.occurrenceIndex || evt.occurrenceIndex === 1) {
         return true;
       }
-      // 2回目以降：明示的に voteFirstOnly が設定されているか、定例会なら初回のみを既定とする
       if (evt.voteFirstOnly === true) {
         return false;
       }
       if (evt.voteFirstOnly === false) {
         return true;
       }
-      // 未設定（後方互換）：定例会(meeting)ならデフォルトで初回のみ（2回目以降は非表示）
       return evt.category !== 'meeting';
     }
 
@@ -1540,7 +1543,6 @@
         return { key: 'event-day', label: '本日が本番！', badgeClass: 'bg-amber-500 text-white font-bold animate-bounce' };
       }
 
-      // 投票期間が初回のみで、2回目以降のインスタンスの場合
       if (!hasVotePeriodForOccurrence(evt)) {
         const leftDays = Math.ceil((evtTime - todayTime) / (1000 * 60 * 60 * 24));
         return {
@@ -1747,7 +1749,6 @@
           const evtTime = timeline.eventDate.getTime();
           const showVote = hasVotePeriodForOccurrence(evt);
 
-          // Only render voting bar if enabled for this occurrence (e.g. only first time for regular meetings)
           if (showVote && voteStartTime <= weekEndTime && voteEndTime >= weekStartTime) {
             let startCol = 0;
             let endCol = 6;
@@ -1790,7 +1791,6 @@
             });
           }
 
-          // Render event day bar
           if (evtTime >= weekStartTime && evtTime <= weekEndTime) {
             const col = Math.round((evtTime - weekStartTime) / (1000 * 60 * 60 * 24));
             if (col >= 0 && col <= 6) {
@@ -3014,7 +3014,6 @@
       document.getElementById('eventRecurrenceCount').value = evt.recurrenceCount || 10;
       document.getElementById('eventRecurrenceUntil').value = evt.recurrenceUntil || '';
       
-      // Load voteFirstOnly
       document.getElementById('eventVoteFirstOnly').checked = (evt.voteFirstOnly !== undefined) ? evt.voteFirstOnly : (evt.category === 'meeting');
       
       updateRecurrenceOptionsLabel();
@@ -3481,6 +3480,7 @@
         <html lang="ja">
         <head>
           <meta charset="UTF-8">
+          <meta name="robots" content="noindex, nofollow, noarchive">
           <title>${monthLabel} サークル日程・タスク＆投票期間カレンダー</title>
           <script src="https://cdn.tailwindcss.com"><\/script>
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -3747,7 +3747,7 @@
           category: 'meeting',
           recurrence: 'weekly',
           recurrenceUntil: formatDateStr(new Date(curYear, curMonth + 2, 28)),
-          voteFirstOnly: true, // 初回のみ投票期間を表示
+          voteFirstOnly: true,
           startOffset: 7,
           endOffset: 2,
           location: '学生会館 第3会議室 / Zoom',
