@@ -1,0 +1,3849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CircleSync - サークル日程・恒例イベント・準備タスク＆集金管理シート</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.96); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop-in {
+      animation: popIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Highlight pulse animation for selected schedule */
+    @keyframes highlightBarPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.8), 0 0 16px rgba(245, 158, 11, 0.6);
+        transform: scale(1.02);
+      }
+      50% {
+        box-shadow: 0 0 0 5px rgba(234, 88, 12, 0.9), 0 0 24px rgba(234, 88, 12, 0.8);
+        transform: scale(1.04);
+      }
+    }
+    .calendar-item-highlighted {
+      animation: highlightBarPulse 1.2s ease-in-out infinite !important;
+      z-index: 30 !important;
+      position: relative !important;
+    }
+
+    /* Print Specific Styles */
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+    @media print {
+      body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-size: 11pt !important;
+      }
+      .no-print, header, #filterSection, #guideModal, #eventModal, #detailModal, #dataModal, #printModal, #sheetModal, #annualModal, #annualEditModal, #recurringActionModal, #toast {
+        display: none !important;
+      }
+      main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .calendar-container {
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- Top Navigation -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-2 sm:gap-3">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
+            <i class="fa-solid fa-calendar-check text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-lg text-slate-900 tracking-tight">CircleSync</span>
+              <span class="bg-teal-50 text-teal-700 text-xs px-2 py-0.5 rounded-full font-semibold border border-teal-200 hidden sm:inline-block">日程＆タスク集金管理</span>
+            </div>
+            <p class="text-xs text-slate-500 hidden md:block">出欠投票逆算・準備タスク（告知/場所/集金/支払）・恒例行事シート連携</p>
+          </div>
+        </div>
+
+        <!-- Action Tools & Buttons -->
+        <div class="flex items-center space-x-1.5 sm:space-x-2">
+          <!-- Annual Routine Presets Button -->
+          <button id="openAnnualModalBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold border border-amber-200 transition" title="毎年恒例イベントと標準タスクの管理">
+            <i class="fa-solid fa-star text-amber-500"></i>
+            <span class="hidden sm:inline">恒例行事・プリセット</span>
+            <span class="sm:hidden">恒例</span>
+          </button>
+
+          <!-- Sheet View & Export Button -->
+          <button id="openSheetModalBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 transition" title="予定・投票・タスク進捗をシート形式で一覧＆出力">
+            <i class="fa-solid fa-table-list text-emerald-600"></i>
+            <span class="hidden sm:inline">シート出力</span>
+            <span class="sm:hidden">シート</span>
+          </button>
+
+          <!-- Guide Manual Button -->
+          <button id="openGuideBtn" class="flex items-center space-x-1 px-2 sm:px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold border border-indigo-200 transition">
+            <i class="fa-solid fa-book-open"></i>
+            <span class="hidden md:inline">使い方</span>
+          </button>
+
+          <!-- Data Management Button (Import / Export) -->
+          <button id="openDataModalBtn" class="flex items-center space-x-1 px-2 sm:px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 transition" title="保存・引き継ぎ・復元">
+            <i class="fa-solid fa-file-arrow-up text-slate-500"></i>
+            <span class="hidden md:inline">引継ぎ</span>
+          </button>
+
+          <!-- Print / PDF Button -->
+          <button id="openPrintModalBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-700 rounded-xl text-xs font-semibold border border-slate-200 hover:border-teal-300 transition" title="カレンダー印刷・PDF保存">
+            <i class="fa-solid fa-print text-teal-600"></i>
+            <span class="font-bold hidden sm:inline">印刷 / PDF</span>
+          </button>
+
+          <!-- Add Event Button -->
+          <button id="openNewEventModalBtn" class="flex items-center space-x-1.5 bg-teal-600 hover:bg-teal-700 text-white hover:shadow-md active:scale-95 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition shadow-sm">
+            <i class="fa-solid fa-plus"></i>
+            <span class="font-bold">予定を追加</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full flex flex-col gap-6">
+
+    <!-- Top Filter & Simulation Control Bar (no-print) -->
+    <section id="filterSection" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+      <!-- Status Filter Tabs -->
+      <div class="flex items-center flex-wrap gap-2 text-sm">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">状態別表示:</span>
+        <button data-filter="all" class="filter-tab-btn active px-3 py-1.5 rounded-lg font-medium text-xs bg-teal-600 text-white transition">すべて (<span id="countAll">0</span>)</button>
+        <button data-filter="voting" class="filter-tab-btn px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>投票期間中 (<span id="countVoting">0</span>)
+        </button>
+        <button data-filter="upcoming-vote" class="filter-tab-btn px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition">投票開始前 (<span id="countUpcomingVote">0</span>)</button>
+        <button data-filter="vote-ended" class="filter-tab-btn px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition">締切済み・本番前 (<span id="countVoteEnded">0</span>)</button>
+        <button data-filter="has-tasks" class="filter-tab-btn px-3 py-1.5 rounded-lg font-medium text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition">
+          <i class="fa-solid fa-list-check text-amber-600 mr-1"></i>残タスクあり (<span id="countPendingTasks">0</span>)
+        </button>
+      </div>
+
+      <!-- Simulation Date Controller & Legend -->
+      <div class="flex items-center flex-wrap gap-4 text-xs">
+        <!-- Date Simulation (Today Mock) -->
+        <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700">
+          <i class="fa-solid fa-clock-rotate-left text-teal-600 mr-2"></i>
+          <span class="font-medium mr-1.5">基準日（今日）:</span>
+          <input type="date" id="simulatedDateInput" class="bg-transparent font-semibold text-slate-900 outline-none cursor-pointer">
+          <button id="resetTodayBtn" title="実際の本日に戻す" class="ml-2 text-slate-400 hover:text-slate-700">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center gap-3 text-slate-500 font-medium">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-3 h-3 rounded bg-amber-500 inline-block shadow-sm"></span>
+            <span>本番当日</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <span class="w-6 h-2 rounded bg-emerald-500 inline-block"></span>
+            <span>投票期間（帯）</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <i class="fa-solid fa-coins text-amber-600 text-xs"></i>
+            <span>集金・支払</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- Calendar View (8 Cols) -->
+      <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col calendar-container">
+        <!-- Month Navigation Header -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <h2 id="currentMonthLabel" class="text-lg font-bold text-slate-800">2026年 10月</h2>
+            <button id="todayBtn" class="text-xs px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 font-semibold text-slate-600 transition no-print">今月</button>
+          </div>
+          <div class="flex items-center space-x-1 no-print">
+            <button id="prevMonthBtn" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 transition" title="前月">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button id="nextMonthBtn" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 transition" title="翌月">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Days of Week Header -->
+        <div class="grid grid-cols-7 border-b border-slate-100 text-center text-xs font-semibold py-2.5 bg-slate-50/80">
+          <span class="text-rose-500">日</span>
+          <span class="text-slate-600">月</span>
+          <span class="text-slate-600">火</span>
+          <span class="text-slate-600">水</span>
+          <span class="text-slate-600">木</span>
+          <span class="text-slate-600">金</span>
+          <span class="text-blue-500">土</span>
+        </div>
+
+        <!-- Dynamic Weeks Container -->
+        <div id="calendarWeeksContainer" class="divide-y divide-slate-100 text-slate-700 bg-white">
+          <!-- Calendar dynamic weeks with connected span bars and task badges injected here -->
+        </div>
+      </div>
+
+      <!-- Event List & Quick Actions (4 Cols) -->
+      <div class="lg:col-span-4 flex flex-col gap-4">
+        <!-- Event Timeline Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-sm flex items-center">
+              <i class="fa-solid fa-list-check text-teal-600 mr-2"></i>
+              登録スケジュール＆タスク状況
+            </h3>
+            <div class="flex items-center space-x-1.5">
+              <button id="clearHighlightBtn" class="hidden text-[10px] text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full font-bold transition flex items-center" title="選択・強調を解除">
+                <i class="fa-solid fa-xmark mr-1"></i>選択解除
+              </button>
+              <span id="eventsFilteredCount" class="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">0件</span>
+            </div>
+          </div>
+
+          <!-- Event Cards Container -->
+          <div id="eventListContainer" class="mt-3 space-y-3 max-h-[600px] overflow-y-auto pr-1">
+            <!-- Event Items or Empty state injected via JS -->
+          </div>
+        </div>
+
+        <!-- Annual & Routine Quick Entry Card -->
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-950 no-print flex items-center justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-1.5 font-bold text-amber-900">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-600"></i>
+              <span>恒例イベント・タスク一括作成</span>
+            </div>
+            <p class="text-[11px] text-amber-800/80 leading-relaxed">
+              新歓、合宿、学祭の定番タスク（告知・場所・集金・支払い）を年度日程に一括展開できます。
+            </p>
+          </div>
+          <button id="quickAnnualBtn" class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shrink-0 ml-2 shadow-sm transition">
+            恒例行事開く
+          </button>
+        </div>
+
+        <!-- Quick Help Card -->
+        <div class="bg-gradient-to-br from-indigo-50 to-teal-50 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-900 no-print">
+          <div class="flex items-center space-x-2 font-bold mb-1.5 text-indigo-900">
+            <i class="fa-solid fa-file-excel text-teal-600 text-sm"></i>
+            <span>シート出力＆スプレッドシート連携</span>
+          </div>
+          <p class="leading-relaxed text-indigo-800/80 mb-2">
+            登録された全行事の投票期間と準備タスク（集金・支払・場所）の進行状況を、GoogleスプレッドシートやExcelに一括コピー・CSV保存できます。
+          </p>
+          <button id="quickOpenSheetBtn" class="text-indigo-600 hover:text-indigo-800 font-bold underline inline-flex items-center">
+            シート出力画面を開く <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- 1. Sheet Export & Table Modal              -->
+  <!-- ========================================== -->
+  <div id="sheetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in flex flex-col max-h-[92vh]">
+      <!-- Modal Header -->
+      <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-base">
+            <i class="fa-solid fa-table-list"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base leading-tight">スケジュール・タスク・集金状況 シート出力</h3>
+            <p class="text-[11px] text-slate-400">Googleスプレッドシート・Excelへの直貼り（TSV）やCSVダウンロードに対応</p>
+          </div>
+        </div>
+        <button id="closeSheetModalBtn" class="text-white/70 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Action Toolbar -->
+      <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center space-x-2 text-xs">
+          <label class="font-bold text-slate-600">表示対象:</label>
+          <select id="sheetScopeFilter" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-medium outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="all">全期間のスケジュール</option>
+            <option value="current-year">今年度（4月〜翌3月）</option>
+            <option value="current-month">現在表示中の月のみ</option>
+          </select>
+          <span id="sheetRowCountBadge" class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full">0件</span>
+        </div>
+
+        <div class="flex items-center flex-wrap gap-2 text-xs">
+          <!-- Copy TSV Button for Google Sheets / Excel -->
+          <button id="copyTsvSheetBtn" class="flex items-center space-x-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span>スプレッドシート用にコピー</span>
+          </button>
+          
+          <!-- Download CSV Button -->
+          <button id="downloadCsvBtn" class="flex items-center space-x-1.5 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 font-semibold border border-slate-300 rounded-xl transition">
+            <i class="fa-solid fa-file-csv text-emerald-600 text-sm"></i>
+            <span>CSV保存 (Excel対応)</span>
+          </button>
+
+          <!-- Print Table Button -->
+          <button id="printSheetTableBtn" class="flex items-center space-x-1.5 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 font-semibold border border-slate-300 rounded-xl transition">
+            <i class="fa-solid fa-print text-slate-600"></i>
+            <span>表を印刷</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Spreadsheet Preview Container -->
+      <div class="p-4 overflow-x-auto overflow-y-auto flex-1">
+        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm min-w-[850px]">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider">
+                <th class="p-3 border-r border-slate-200">#</th>
+                <th class="p-3 border-r border-slate-200">イベント名</th>
+                <th class="p-3 border-r border-slate-200">カテゴリー</th>
+                <th class="p-3 border-r border-slate-200 bg-amber-50/70 text-amber-900">本番日程</th>
+                <th class="p-3 border-r border-slate-200 bg-teal-50/70 text-teal-900">投票期間 (開始〜締切)</th>
+                <th class="p-3 border-r border-slate-200 text-center">準備猶予</th>
+                <th class="p-3 border-r border-slate-200">タスク進捗 (完了/全件)</th>
+                <th class="p-3 border-r border-slate-200">主な残タスク (告知/場所/集金/支払)</th>
+                <th class="p-3 border-r border-slate-200">場所・会場</th>
+                <th class="p-3 border-r border-slate-200">状態</th>
+                <th class="p-3">メモ・注意事項</th>
+              </tr>
+            </thead>
+            <tbody id="sheetTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sheet Footer Guide -->
+      <div class="p-3.5 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between shrink-0">
+        <span class="flex items-center">
+          <i class="fa-solid fa-circle-info text-teal-600 mr-1.5"></i>
+          「スプレッドシート用にコピー」を押してスプレッドシートやExcelのセル（A1など）を選択し貼り付け（Ctrl+V）すると綺麗に表組みされます。
+        </span>
+        <button id="closeSheetModalBtn2" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-slate-700 transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. Annual Routine & Presets Modal          -->
+  <!-- ========================================== -->
+  <div id="annualModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-4 text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-amber-100 text-base">
+            <i class="fa-solid fa-star"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base leading-tight">毎年恒例イベント・年間タスクプリセット一覧</h3>
+            <p class="text-[11px] text-amber-100">サークル定番行事と定番タスク（集金・場所・告知）。今年度の日程へ一括反映できます</p>
+          </div>
+        </div>
+        <button id="closeAnnualModalBtn" class="text-white/80 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Year Application & Routine Toolbar -->
+      <div class="p-4 bg-amber-50/70 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center space-x-2 text-xs">
+          <span class="font-bold text-amber-950 flex items-center">
+            <i class="fa-solid fa-calendar-days text-amber-600 mr-1.5"></i>
+            反映先の年度:
+          </span>
+          <select id="annualTargetYear" class="px-3 py-1.5 rounded-lg border border-amber-300 bg-white font-bold text-amber-950 outline-none focus:ring-2 focus:ring-amber-500">
+            <!-- Populated via JS -->
+          </select>
+          <button id="applyAllAnnualPresetsBtn" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-sm transition flex items-center space-x-1">
+            <i class="fa-solid fa-file-import"></i>
+            <span>すべての恒例行事＆タスクを反映</span>
+          </button>
+        </div>
+
+        <button id="openNewAnnualItemBtn" class="px-3.5 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-lg transition text-xs flex items-center space-x-1.5 shadow-sm">
+          <i class="fa-solid fa-plus text-amber-600"></i>
+          <span>恒例行事を新しく追加</span>
+        </button>
+      </div>
+
+      <!-- Annual Events Grid / List -->
+      <div id="annualPresetsContainer" class="p-5 overflow-y-auto space-y-3 flex-1 bg-slate-50/50">
+        <!-- Annual cards injected by JS -->
+      </div>
+
+      <!-- Footer -->
+      <div class="p-4 border-t border-slate-200 bg-white flex items-center justify-between shrink-0 text-xs">
+        <button id="resetAnnualPresetsBtn" class="text-rose-600 hover:text-rose-700 hover:underline font-medium text-[11px] flex items-center">
+          <i class="fa-solid fa-rotate-left mr-1"></i> 初期プリセット（大学サークル標準）に戻す
+        </button>
+        <button id="closeAnnualModalBtn2" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. Edit / Create Annual Routine Item Modal -->
+  <!-- ========================================== -->
+  <div id="annualEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in">
+      <div class="bg-slate-800 px-6 py-4 text-white flex items-center justify-between">
+        <h3 id="annualEditModalTitle" class="font-bold text-sm flex items-center">
+          <i class="fa-solid fa-pen mr-2 text-amber-400"></i>
+          恒例イベントの編集
+        </h3>
+        <button id="closeAnnualEditModalBtn" class="text-white/70 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="annualEditForm" class="p-5 space-y-3.5 text-xs text-slate-700 max-h-[82vh] overflow-y-auto">
+        <input type="hidden" id="annualEditId">
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">イベント名 <span class="text-rose-500">*</span></label>
+          <input type="text" id="annualEditTitle" required placeholder="例: 秋学祭 模擬店出店" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none font-semibold">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">開催月 <span class="text-rose-500">*</span></label>
+            <select id="annualEditMonth" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none font-medium bg-white">
+              <option value="1">1月</option>
+              <option value="2">2月</option>
+              <option value="3">3月</option>
+              <option value="4">4月</option>
+              <option value="5">5月</option>
+              <option value="6">6月</option>
+              <option value="7">7月</option>
+              <option value="8">8月</option>
+              <option value="9">9月</option>
+              <option value="10">10月</option>
+              <option value="11">11月</option>
+              <option value="12">12月</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">目安日 (日にち)</label>
+            <input type="number" id="annualEditDay" min="1" max="31" value="15" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">カテゴリー</label>
+          <select id="annualEditCategory" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none font-medium bg-white">
+            <option value="festival">学祭・大型行事</option>
+            <option value="camp">合宿・旅行</option>
+            <option value="party">飲み会・懇親会</option>
+            <option value="meeting">定例ミーティング</option>
+            <option value="other">その他イベント</option>
+          </select>
+        </div>
+
+        <div class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2">
+          <div class="font-bold text-amber-900">標準の投票期間オフセット（逆算）</div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] text-slate-600 mb-0.5">投票開始 (本番の何日前)</label>
+              <div class="flex items-center space-x-1">
+                <input type="number" id="annualEditStartOffset" min="2" max="120" value="30" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-center">
+                <span class="text-slate-500">日前</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-600 mb-0.5">投票締切 (本番の何日前)</label>
+              <div class="flex items-center space-x-1">
+                <input type="number" id="annualEditEndOffset" min="1" max="90" value="14" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-center">
+                <span class="text-slate-500">日前</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">標準の会場・場所</label>
+          <input type="text" id="annualEditLocation" placeholder="例: メインキャンパス中庭 / 箱根" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">引き継ぎメモ・注意事項</label>
+          <textarea id="annualEditNotes" rows="2" placeholder="予約必須時期や過去の反省点など" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <button type="button" id="cancelAnnualEditBtn" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-100 transition">
+            キャンセル
+          </button>
+          <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md transition">
+            保存する
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. Event Modal (Create / Edit + TASKS)      -->
+  <!-- ========================================== -->
+  <div id="eventModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in flex flex-col max-h-[92vh]">
+      <div class="bg-gradient-to-r from-teal-600 to-indigo-600 px-6 py-4 text-white flex items-center justify-between shrink-0">
+        <h3 id="modalTitle" class="font-bold text-base flex items-center">
+          <i class="fa-regular fa-calendar-plus mr-2 text-teal-200"></i>
+          新しいサークル予定を追加
+        </h3>
+        <button id="closeEventModalBtn" class="text-white/80 hover:text-white transition text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="eventForm" class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <input type="hidden" id="eventId">
+
+        <!-- Title -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">イベント名 <span class="text-rose-500">*</span></label>
+          <input type="text" id="eventTitle" required placeholder="例: 秋学祭 模擬店出店、夏合宿、新歓コンパ" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm transition font-semibold">
+        </div>
+
+        <!-- Event Date & Category -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+              本番予定日 <span class="text-rose-500">*</span>
+            </label>
+            <input type="date" id="eventDate" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm transition font-semibold">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">カテゴリー</label>
+            <select id="eventCategory" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm transition font-medium">
+              <option value="festival">学祭・大型行事</option>
+              <option value="camp">合宿・旅行</option>
+              <option value="party">飲み会・懇親会</option>
+              <option value="meeting">定例ミーティング</option>
+              <option value="other">その他イベント</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Voting Dates (Direct input & Reverse calculation box) -->
+        <div class="p-3.5 sm:p-4 bg-teal-50/70 rounded-xl border border-teal-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-teal-900 uppercase tracking-wider flex items-center">
+              <i class="fa-solid fa-calendar-check text-teal-600 mr-1.5"></i>
+              出欠投票期間の設定（直接日付 ＆ 逆算）
+            </span>
+            <span class="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded">直接入力可</span>
+          </div>
+
+          <!-- Direct Date Inputs (Start and End) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="bg-white p-2.5 sm:p-3 rounded-xl border border-teal-200 shadow-sm">
+              <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>投票開始日 <span class="text-rose-500">*</span></span>
+                <span id="startOffsetBadge" class="text-[10px] text-teal-700 font-normal">本番の30日前</span>
+              </label>
+              <input type="date" id="voteStartDateInput" required class="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-xs font-bold text-slate-800 transition">
+            </div>
+
+            <div class="bg-white p-2.5 sm:p-3 rounded-xl border border-teal-200 shadow-sm">
+              <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>投票締切日 <span class="text-rose-500">*</span></span>
+                <span id="endOffsetBadge" class="text-[10px] text-rose-600 font-normal">本番の14日前</span>
+              </label>
+              <input type="date" id="voteEndDateInput" required class="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none text-xs font-bold text-rose-700 transition">
+            </div>
+          </div>
+
+          <!-- Presets -->
+          <div>
+            <span class="block text-[11px] font-medium text-slate-600 mb-1">投票期間プリセット:</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <button type="button" data-preset="festival" class="preset-btn px-2 py-1 bg-white border border-teal-300 hover:border-teal-500 hover:bg-teal-50 text-slate-700 rounded-lg text-center font-medium transition text-[11px]">
+                学祭 (30〜14日前)
+              </button>
+              <button type="button" data-preset="camp" class="preset-btn px-2 py-1 bg-white border border-teal-300 hover:border-teal-500 hover:bg-teal-50 text-slate-700 rounded-lg text-center font-medium transition text-[11px]">
+                合宿 (45〜21日前)
+              </button>
+              <button type="button" data-preset="party" class="preset-btn px-2 py-1 bg-white border border-teal-300 hover:border-teal-500 hover:bg-teal-50 text-slate-700 rounded-lg text-center font-medium transition text-[11px]">
+                飲み会 (14〜5日前)
+              </button>
+              <button type="button" data-preset="meeting" class="preset-btn px-2 py-1 bg-white border border-teal-300 hover:border-teal-500 hover:bg-teal-50 text-slate-700 rounded-lg text-center font-medium transition text-[11px]">
+                定例 (7〜2日前)
+              </button>
+            </div>
+          </div>
+
+          <!-- Sliders for Fine Adjustments -->
+          <div class="space-y-1.5 pt-1 border-t border-teal-100">
+            <div class="flex items-center justify-between text-[11px] text-slate-500">
+              <span>日数スライダー連動:</span>
+              <span id="calculatedPrepSummary" class="font-bold text-indigo-700">準備猶予 14日間</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <div class="flex justify-between items-center mb-0.5">
+                  <span class="text-slate-600">開始: 本番の<span id="startOffsetLabel" class="font-bold text-teal-700">30</span>日前</span>
+                </div>
+                <input type="range" id="startOffsetSlider" min="2" max="90" value="30" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600">
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-0.5">
+                  <span class="text-slate-600">締切: 本番の<span id="endOffsetLabel" class="font-bold text-rose-600">14</span>日前</span>
+                </div>
+                <input type="range" id="endOffsetSlider" min="1" max="60" value="14" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-600">
+              </div>
+            </div>
+          </div>
+
+          <!-- Validation Alert -->
+          <div id="dateValidationAlert" class="hidden p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center">
+            <i class="fa-solid fa-triangle-exclamation mr-1.5 text-rose-500"></i>
+            <span id="dateValidationText">日付の順序が正しくありません</span>
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- NEW: Preparation Tasks & Money / Booking Checklist Box   -->
+        <!-- ======================================================== -->
+        <div class="p-4 bg-gradient-to-br from-amber-50/60 to-indigo-50/40 rounded-xl border border-amber-200/90 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1 border-b border-amber-200/60">
+            <div>
+              <span class="text-xs font-bold text-amber-950 uppercase tracking-wide flex items-center">
+                <i class="fa-solid fa-list-check text-amber-600 mr-1.5 text-sm"></i>
+                準備タスク・集金/支払・ToDo管理
+              </span>
+              <p class="text-[11px] text-slate-500">告知、会場決め、参加費決定、集金、施設支払いなどの期日管理</p>
+            </div>
+            
+            <!-- Quick Preset Tasks Template Buttons -->
+            <div class="flex items-center space-x-1 shrink-0">
+              <span class="text-[10px] text-slate-400 mr-1">テンプレ:</span>
+              <button type="button" id="applyCampTasksTemplateBtn" class="px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold shadow-xs transition" title="合宿用タスク（場所予約・参加費決め・集金・宿振込）を一括セット">
+                合宿セット
+              </button>
+              <button type="button" id="applyFestTasksTemplateBtn" class="px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold shadow-xs transition" title="学祭用タスク（出店届・買い出し・集金・シフト）を一括セット">
+                学祭セット
+              </button>
+              <button type="button" id="applyPartyTasksTemplateBtn" class="px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold shadow-xs transition" title="飲み会用タスク（店決め・集金・支払）を一括セット">
+                飲み会セット
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Task Rows Container -->
+          <div id="modalTasksListContainer" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <!-- Injected via JavaScript -->
+          </div>
+
+          <!-- Add Task Button -->
+          <div class="flex items-center justify-between pt-1">
+            <button type="button" id="addNewTaskRowBtn" class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition flex items-center shadow-xs">
+              <i class="fa-solid fa-plus text-amber-600 mr-1.5"></i>
+              <span>タスクを1件追加</span>
+            </button>
+            <span class="text-[11px] text-slate-500">
+              <i class="fa-solid fa-coins text-amber-500 mr-1"></i>集金・支払・場所・告知の種別を選べます
+            </span>
+          </div>
+        </div>
+
+        <!-- Recurrence (Repeat) Setting Box -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center">
+              <i class="fa-solid fa-arrows-rotate text-teal-600 mr-1.5"></i>
+              繰り返し（定期スケジュール）
+            </span>
+            <span class="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 font-medium">定例会・週次</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <div>
+              <select id="eventRecurrence" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-xs transition font-medium">
+                <option value="none">繰り返さない (単発イベント)</option>
+                <option value="weekly" id="optWeekly">毎週 (同曜日)</option>
+                <option value="biweekly" id="optBiweekly">隔週 (2週に1回)</option>
+                <option value="monthly" id="optMonthly">毎月 (同日付)</option>
+              </select>
+            </div>
+
+            <div id="recurrenceSettingsContainer" class="hidden p-2.5 bg-white rounded-lg border border-slate-200 space-y-2">
+              <div class="flex items-center space-x-4 text-xs">
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                  <input type="radio" name="recurrenceEndType" value="count" id="recEndTypeCount" class="text-teal-600 focus:ring-teal-500" checked>
+                  <span class="font-medium text-slate-700">回数を指定</span>
+                </label>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                  <input type="radio" name="recurrenceEndType" value="until" id="recEndTypeUntil" class="text-teal-600 focus:ring-teal-500">
+                  <span class="font-medium text-slate-700">終了日を指定</span>
+                </label>
+              </div>
+
+              <div id="recurrenceCountBox" class="flex items-center space-x-2 pt-0.5">
+                <label for="eventRecurrenceCount" class="text-[11px] text-slate-600 whitespace-nowrap">繰り返し回数:</label>
+                <div class="flex items-center space-x-1">
+                  <input type="number" id="eventRecurrenceCount" min="2" max="52" value="10" class="w-16 px-2 py-1 rounded-lg border border-slate-300 text-xs font-bold text-center">
+                  <span class="text-xs text-slate-600 font-medium">回で終了</span>
+                </div>
+              </div>
+
+              <div id="recurrenceUntilBox" class="hidden flex items-center space-x-2 pt-0.5">
+                <label for="eventRecurrenceUntil" class="text-[11px] text-slate-600 whitespace-nowrap">終了日:</label>
+                <input type="date" id="eventRecurrenceUntil" class="flex-1 px-3 py-1 rounded-lg border border-slate-300 text-xs font-medium">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location & Notes -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">場所・会場</label>
+          <input type="text" id="eventLocation" placeholder="例: 大学第2食堂 / 箱根セミナーハウス / オンライン" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-xs transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">引き継ぎメモ・注意事項</label>
+          <textarea id="eventNotes" rows="2" placeholder="予約要件やキャンセルの注意事項、集金振込口座、メンバーへの依頼など" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-xs transition"></textarea>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex items-center justify-between pt-3 border-t border-slate-100 shrink-0">
+          <button type="button" id="deleteEventBtn" class="text-rose-600 hover:text-rose-700 font-medium text-xs px-3 py-2 rounded-lg hover:bg-rose-50 transition hidden">
+            <i class="fa-regular fa-trash-can mr-1"></i> 削除
+          </button>
+          <div class="flex items-center space-x-2 ml-auto">
+            <button type="button" id="cancelModalBtn" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition">
+              キャンセル
+            </button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-md shadow-teal-600/20 transition">
+              保存する
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 5. Event Detail & Notification Modal       -->
+  <!-- ========================================== -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden no-print">
+    <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in flex flex-col max-h-[92vh]">
+      <div id="detailHeader" class="px-6 py-4 bg-slate-800 text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-2 overflow-hidden">
+          <span id="detailBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 shrink-0">投票期間中</span>
+          <h3 id="detailTitle" class="font-bold text-base truncate">学祭 模擬店企画</h3>
+        </div>
+        <button id="closeDetailModalBtn" class="text-white/80 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 overflow-y-auto flex-1">
+        <!-- Main Dates Pill -->
+        <div class="grid grid-cols-2 gap-3 text-center">
+          <div class="p-3 bg-amber-50 rounded-xl border border-amber-200">
+            <div class="text-[11px] font-bold text-amber-800 uppercase tracking-wide">本番日程</div>
+            <div id="detailEventDate" class="text-sm font-bold text-amber-950 mt-0.5">2026/11/01</div>
+          </div>
+          <div class="p-3 bg-teal-50 rounded-xl border border-teal-200">
+            <div class="text-[11px] font-bold text-teal-800 uppercase tracking-wide">出欠投票期間</div>
+            <div id="detailVotePeriod" class="text-xs font-bold text-teal-950 mt-0.5">10/02 〜 10/18</div>
+          </div>
+        </div>
+
+        <!-- Recurrence Detail Info -->
+        <div id="detailRecurrenceBadgeContainer" class="hidden p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 text-xs flex items-center justify-between">
+          <div class="flex items-center space-x-1.5">
+            <i class="fa-solid fa-arrows-rotate text-indigo-600"></i>
+            <span class="font-bold" id="detailRecurrenceText">毎週月曜日</span>
+          </div>
+          <span class="text-[10px] bg-indigo-200/70 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">定期予定</span>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- NEW: Detail Tasks & Money / Booking Interactive Checklist-->
+        <!-- ======================================================== -->
+        <div class="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-1.5">
+              <i class="fa-solid fa-list-check text-amber-600"></i>
+              <span class="text-xs font-bold text-amber-950">準備タスク & 金銭/予約チェックリスト</span>
+            </div>
+            <span id="detailTasksProgressBadge" class="text-[11px] font-bold bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-full">
+              0 / 0 完了 (0%)
+            </span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full bg-amber-200/60 h-2 rounded-full overflow-hidden">
+            <div id="detailTasksProgressBar" class="bg-gradient-to-r from-amber-500 to-teal-600 h-full w-0 transition-all duration-300"></div>
+          </div>
+
+          <!-- Interactive Tasks List in Detail -->
+          <div id="detailTasksInteractiveContainer" class="space-y-2 text-xs">
+            <!-- Dynamic checkboxes injected here -->
+          </div>
+
+          <!-- Quick Add Task in Detail view -->
+          <div class="pt-2 border-t border-amber-200/60 flex items-center gap-2">
+            <input type="text" id="quickDetailTaskInput" placeholder="新しいタスクを入力 (例: バス会社へ支払い)" class="flex-1 px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500">
+            <button type="button" id="quickAddDetailTaskBtn" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition shrink-0 shadow-xs">
+              追加
+            </button>
+          </div>
+        </div>
+
+        <!-- Description & Details -->
+        <div class="space-y-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">場所:</span>
+            <span id="detailLocation" class="font-medium text-slate-800">大学 第2食堂</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">準備・手配猶予:</span>
+            <span id="detailPrepDays" class="font-medium text-indigo-700">締切から本番まで 14日間</span>
+          </div>
+          <div class="pt-1.5 border-t border-slate-200">
+            <span class="text-slate-400 block mb-0.5">備考・メモ:</span>
+            <p id="detailNotes" class="text-slate-700 whitespace-pre-wrap leading-relaxed">仕込みとシフト作成のため、期日厳守でお願いいたします。</p>
+          </div>
+        </div>
+
+        <!-- LINE / Discord Notification Message Generator with Tasks -->
+        <div class="p-4 bg-teal-50/80 border border-teal-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-teal-900 flex items-center">
+              <i class="fa-brands fa-line text-emerald-600 mr-1.5 text-base"></i>
+              サークル告知用メッセージ（ワンタップコピー）
+            </span>
+            <button id="copyTemplateTextBtn" class="bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center shadow-sm">
+              <i class="fa-regular fa-copy mr-1"></i> コピー
+            </button>
+          </div>
+          <p class="text-[11px] text-teal-800/80">出欠投票期間と、直近の集金・場所・告知のタスク案内が自動生成されます。</p>
+          <textarea id="templateNotificationText" readonly rows="6" class="w-full text-[11px] p-2.5 rounded-lg border border-teal-200 bg-white font-mono text-slate-700 outline-none resize-none"></textarea>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100 shrink-0">
+          <button id="editFromDetailBtn" class="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center px-2 py-1.5 rounded-lg hover:bg-teal-50 transition">
+            <i class="fa-regular fa-pen-to-square mr-1"></i> 期間やタスクを編集
+          </button>
+          <div class="flex items-center space-x-2">
+            <button id="deleteFromDetailBtn" class="px-3 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition">
+              <i class="fa-regular fa-trash-can mr-1"></i> 削除
+            </button>
+            <button id="closeDetailBtn2" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition">
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recurring Action Modal -->
+  <div id="recurringActionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in">
+      <div class="p-5">
+        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3 text-lg">
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </div>
+        <h3 class="text-base font-bold text-center text-slate-800 mb-1">定期的な予定の削除</h3>
+        <p class="text-xs text-slate-500 text-center mb-4 leading-relaxed">
+          これは繰り返しの予定です。どの予定を削除しますか？
+        </p>
+
+        <div class="space-y-2">
+          <button id="deleteOnlyThisBtn" class="w-full p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/60 text-left transition flex items-start space-x-2.5">
+            <i class="fa-regular fa-calendar-xmark text-rose-500 text-sm mt-0.5"></i>
+            <div>
+              <div class="text-xs font-bold text-slate-800">この予定のみ</div>
+              <div class="text-[11px] text-slate-500">選択した回（<span id="targetOccurrenceDateLabel" class="font-semibold text-rose-600"></span>）のみを削除します。</div>
+            </div>
+          </button>
+
+          <button id="deleteThisAndFollowingBtn" class="w-full p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/60 text-left transition flex items-start space-x-2.5">
+            <i class="fa-solid fa-forward-fast text-rose-500 text-sm mt-0.5"></i>
+            <div>
+              <div class="text-xs font-bold text-slate-800">これ以降のすべての予定</div>
+              <div class="text-[11px] text-slate-500">この回以降の繰り返しをすべて終了・削除します。</div>
+            </div>
+          </button>
+
+          <button id="deleteAllOccurrencesBtn" class="w-full p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/60 text-left transition flex items-start space-x-2.5">
+            <i class="fa-solid fa-trash-can text-rose-500 text-sm mt-0.5"></i>
+            <div>
+              <div class="text-xs font-bold text-slate-800">すべての予定</div>
+              <div class="text-[11px] text-slate-500">この定期スケジュール全体を完全に削除します。</div>
+            </div>
+          </button>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+          <button id="cancelRecurringActionBtn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-semibold text-slate-600 transition">
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Modal -->
+  <div id="printModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in">
+      <div class="bg-slate-800 px-6 py-4 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center">
+          <i class="fa-solid fa-print mr-2 text-teal-400"></i>
+          印刷 / PDF保存
+        </h3>
+        <button id="closePrintModalBtn" class="text-white/80 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs text-slate-700">
+        <div class="p-3 bg-teal-50 rounded-xl border border-teal-200 text-teal-900 leading-relaxed">
+          <div class="font-bold flex items-center mb-1">
+            <i class="fa-solid fa-circle-info mr-1 text-teal-600"></i>
+            印刷最適化について
+          </div>
+          A4横向きに最適化されたカレンダーと予定一覧、およびタスク状況が出力されます。
+        </div>
+
+        <div class="space-y-2 pt-1">
+          <button id="printDedicatedWindowBtn" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold transition flex items-center justify-center space-x-2 shadow-md shadow-teal-600/20">
+            <i class="fa-solid fa-up-right-from-square"></i>
+            <span>専用ウィンドウで綺麗に印刷 / PDF化（推奨）</span>
+          </button>
+          
+          <button id="printStandardBtn" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition flex items-center justify-center space-x-2 border border-slate-200">
+            <i class="fa-solid fa-print text-slate-500"></i>
+            <span>この画面のままブラウザ印刷</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Guide Modal -->
+  <div id="guideModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in flex flex-col max-h-[88vh]">
+      <div class="bg-gradient-to-r from-indigo-700 to-teal-700 px-6 py-4 text-white flex items-center justify-between shrink-0">
+        <h3 class="font-bold text-base flex items-center">
+          <i class="fa-solid fa-book-open mr-2 text-indigo-200"></i>
+          CircleSync 取扱説明書（使い方ガイド）
+        </h3>
+        <button id="closeGuideModalBtn" class="text-white/80 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-6 text-slate-700 text-xs sm:text-sm leading-relaxed">
+        <div class="space-y-2">
+          <h4 class="font-bold text-amber-950 text-sm flex items-center">
+            <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 inline-flex items-center justify-center text-xs font-bold mr-2">1</span>
+            準備タスク＆集金・支払いの管理（新機能）
+          </h4>
+          <p class="text-slate-600">
+            学祭や合宿などの各イベントに、<strong>「全体告知」「場所・宿の決定」「参加費・予算決定」「集金締切」「施設・バスへの支払い」</strong>などのタスクを自由に追加・編集できます。「合宿セット」「学祭セット」のワンタップボタンを押すと、本番日程から自動逆算した日付で定番タスクが一括登録されます。
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-bold text-emerald-950 text-sm flex items-center">
+            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 inline-flex items-center justify-center text-xs font-bold mr-2">2</span>
+            シート出力機能（スプレッドシート＆Excel直貼り）
+          </h4>
+          <p class="text-slate-600">
+            ヘッダーの「シート出力」から、行事日程・投票期間だけでなく<strong>準備タスクの進捗状況</strong>も含めた一覧をプレビュー＆コピーできます。Googleスプレッドシートへの貼り付けやCSV出力に対応しています。
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-bold text-indigo-950 text-sm flex items-center">
+            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 inline-flex items-center justify-center text-xs font-bold mr-2">3</span>
+            恒例行事プリセットからの一括展開
+          </h4>
+          <p class="text-slate-600">
+            毎年恒例の行事マスターには、出欠投票期間に加えて「集金」や「支払い」の標準タスクがあらかじめ設定されています。新年度の幹部交代時にワンクリックで年間行事とToDoを展開できます。
+          </p>
+        </div>
+
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
+          <div class="text-xs text-amber-900">
+            <span class="font-bold block">💡 動作を試してみたい方へ</span>
+            タスク（集金・告知・場所決め）がセットされたサンプル行事を読み込めます。
+          </div>
+          <button id="loadSampleDataBtn" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-sm shrink-0 ml-3">
+            サンプル予定を読み込む
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
+        <button id="closeGuideModalBtn2" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Management Modal (Export / Import / Reset) -->
+  <div id="dataModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-pop-in">
+      <div class="bg-slate-800 px-6 py-4 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center">
+          <i class="fa-solid fa-file-arrow-up mr-2 text-teal-300"></i>
+          データの保存・引き継ぎ・復元
+        </h3>
+        <button id="closeDataModalBtn" class="text-white/80 hover:text-white text-lg w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs text-slate-700">
+        <p class="text-slate-500 leading-relaxed">
+          全スケジュール、準備タスク（集金・支払など）、恒例行事プリセットをバックアップ・復元できます。
+        </p>
+
+        <!-- Export -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div class="font-bold text-slate-800 flex items-center justify-between">
+            <span>① データを保存・書き出し</span>
+            <span class="text-[10px] text-teal-600 font-semibold">JSON形式 (タスク・プリセット含む)</span>
+          </div>
+          <p class="text-[11px] text-slate-500">現在の全データ（タスク含む）をファイル保存します。</p>
+          <button id="exportDataBtn" class="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition flex items-center justify-center space-x-1.5 shadow-sm">
+            <i class="fa-solid fa-download"></i>
+            <span>スケジュール＆タスクを出力（ダウンロード）</span>
+          </button>
+        </div>
+
+        <!-- Import -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div class="font-bold text-slate-800 flex items-center justify-between">
+            <span>② データを復元・読み込み</span>
+            <span class="text-[10px] text-indigo-600 font-semibold">引き継ぎ用</span>
+          </div>
+          <p class="text-[11px] text-slate-500">保存したJSONファイルを選択してスケジュールを復元します。</p>
+          <label class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm">
+            <i class="fa-solid fa-upload"></i>
+            <span>JSONファイルを選択して読み込み</span>
+            <input type="file" id="importFileInput" accept=".json" class="hidden">
+          </label>
+        </div>
+
+        <!-- Reset All -->
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <button id="clearAllEventsBtn" class="text-rose-600 hover:text-rose-700 font-medium hover:underline text-[11px] flex items-center">
+            <i class="fa-regular fa-trash-can mr-1"></i> カレンダーの全予定を初期化
+          </button>
+          <button id="closeDataModalBtn2" class="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold text-slate-600">
+            閉じる
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-xl z-50 transform translate-y-12 opacity-0 pointer-events-none transition-all duration-300 flex items-center space-x-2 no-print">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMsg">通知メッセージ</span>
+  </div>
+
+  <script>
+    /* Helper: Format Date YYYY-MM-DD */
+    function formatDateStr(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    /* Parse YYYY-MM-DD as local date */
+    function parseDateStr(str) {
+      if (!str) return new Date();
+      const [y, m, d] = str.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    /* Add days to date */
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    /* Calculate day difference (d2 - d1) */
+    function diffInDays(d1, d2) {
+      const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+      const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+      return Math.round((utc2 - utc1) / (1000 * 60 * 60 * 24));
+    }
+
+    /* Format for Japanese display */
+    function formatJapaneseDate(date) {
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 (${days[date.getDay()]})`;
+    }
+
+    function getDayOfWeekName(date) {
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${days[date.getDay()]}曜日`;
+    }
+
+    /* LocalStorage Keys */
+    const STORAGE_KEY_EVENTS = 'circle_sync_calendar_events_v3';
+    const STORAGE_KEY_ANNUAL = 'circle_sync_annual_presets_v2';
+
+    /* Task Categories & UI Config */
+    const TASK_CATEGORIES = {
+      money:    { name: 'お金・集金・支払', icon: 'fa-coins',          bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
+      place:    { name: '場所・会場手配',   icon: 'fa-location-dot',   bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300' },
+      announce: { name: '告知・周知',       icon: 'fa-bullhorn',       bg: 'bg-sky-100', text: 'text-sky-800', border: 'border-sky-300' },
+      prep:     { name: '準備・買い出し',   icon: 'fa-clipboard-list', bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-300' },
+      other:    { name: 'その他ToDo',       icon: 'fa-check',          bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-300' }
+    };
+
+    /* Standard Default Annual Routines with built-in default task templates */
+    const DEFAULT_ANNUAL_PRESETS = [
+      {
+        id: 'annual-1',
+        title: '新入生歓迎コンパ・説明会',
+        category: 'party',
+        targetMonth: 4,
+        defaultDay: 18,
+        startOffset: 14,
+        endOffset: 5,
+        location: '大学近辺 居酒屋 / 学生会館',
+        notes: '新入生は会費割引。席数確定のため締切厳守。',
+        tasks: [
+          { id: 't-1-1', title: '一次告知・SNS新歓アナウンス', offset: 20, category: 'announce', assignee: '広報', completed: false },
+          { id: 't-1-2', title: '会場（居酒屋）の仮予約', offset: 15, category: 'place', assignee: '幹事', completed: false },
+          { id: 't-1-3', title: '新歓参加費（在校生・新入生）の決定', offset: 10, category: 'money', assignee: '会計', completed: false },
+          { id: 't-1-4', title: '参加費の事前集金', offset: 3, category: 'money', assignee: '会計', completed: false },
+          { id: 't-1-5', title: 'お店への人数確定連絡＆当日支払', offset: 0, category: 'money', assignee: '幹事', completed: false }
+        ]
+      },
+      {
+        id: 'annual-2',
+        title: '春の新歓レクリエーション＆BBQ',
+        category: 'party',
+        targetMonth: 5,
+        defaultDay: 16,
+        startOffset: 21,
+        endOffset: 7,
+        location: '近郊バーベキュー場・公園',
+        notes: '買い出し担当の割り振り。雨天時の予備日・代替案を検討すること。',
+        tasks: [
+          { id: 't-2-1', title: 'BBQ広場の予約と機材手配', offset: 25, category: 'place', assignee: '企画係', completed: false },
+          { id: 't-2-2', title: '参加費の決定と集金告知', offset: 14, category: 'money', assignee: '会計', completed: false },
+          { id: 't-2-3', title: '参加費の集金締切', offset: 5, category: 'money', assignee: '会計', completed: false },
+          { id: 't-2-4', title: '食材・備品の買い出し＆支払い', offset: 1, category: 'prep', assignee: '買い出し班', completed: false }
+        ]
+      },
+      {
+        id: 'annual-3',
+        title: '夏合宿（2泊3日）',
+        category: 'camp',
+        targetMonth: 8,
+        defaultDay: 20,
+        startOffset: 60,
+        endOffset: 25,
+        location: '長野・白馬セミナーハウス',
+        notes: '宿泊施設のキャンセル規定が3週間前のため、投票締切日厳守！バス・配車手配要。',
+        tasks: [
+          { id: 't-3-1', title: '宿・研修施設の候補選定と仮予約', offset: 70, category: 'place', assignee: '合宿係', completed: false },
+          { id: 't-3-2', title: '合宿一次告知（日程アンケート開始）', offset: 60, category: 'announce', assignee: '合宿係', completed: false },
+          { id: 't-3-3', title: '貸切バス・レンタカーの手配', offset: 40, category: 'place', assignee: '合宿係', completed: false },
+          { id: 't-3-4', title: '合宿費用の予算試算と1人あたり参加費決定', offset: 35, category: 'money', assignee: '会計', completed: false },
+          { id: 't-3-5', title: '宿への手付金・内金支払い', offset: 30, category: 'money', assignee: '会計', completed: false },
+          { id: 't-3-6', title: '参加費の集金締め切り（振込確認）', offset: 15, category: 'money', assignee: '会計', completed: false },
+          { id: 't-3-7', title: 'しおり作成・持ち物と集合場所の全体告知', offset: 7, category: 'announce', assignee: '合宿係', completed: false },
+          { id: 't-3-8', title: '宿・バス会社への残金振込・現地精算', offset: 0, category: 'money', assignee: '会計', completed: false }
+        ]
+      },
+      {
+        id: 'annual-4',
+        title: '大学祭（秋学祭）模擬店出店＆展示',
+        category: 'festival',
+        targetMonth: 11,
+        defaultDay: 2,
+        startOffset: 35,
+        endOffset: 14,
+        location: '大学メインキャンパス第2広場',
+        notes: '実行委員会への参加名簿提出と保健所申請が必要。当日の仕込みシフトを作成。',
+        tasks: [
+          { id: 't-4-1', title: '学祭実行委員会へ出店申請書類提出', offset: 45, category: 'place', assignee: '代表', completed: false },
+          { id: 't-4-2', title: '出店企画・メニュー・出店費用の決定', offset: 35, category: 'money', assignee: '学祭係', completed: false },
+          { id: 't-4-3', title: '参加メンバー募集告知＆投票開始', offset: 30, category: 'announce', assignee: '広報', completed: false },
+          { id: 't-4-4', title: '仕込み材料・機材の業者発注と材料費支払い', offset: 10, category: 'money', assignee: '会計', completed: false },
+          { id: 't-4-5', title: '当日シフト表作成＆集合時間告知', offset: 5, category: 'announce', assignee: '学祭係', completed: false },
+          { id: 't-4-6', title: '学祭売上金・レジ金の精算と会計報告', offset: -2, category: 'money', assignee: '会計', completed: false }
+        ]
+      },
+      {
+        id: 'annual-5',
+        title: '年末総会 ＆ 忘年会',
+        category: 'party',
+        targetMonth: 12,
+        defaultDay: 19,
+        startOffset: 21,
+        endOffset: 7,
+        location: '駅前宴会場',
+        notes: '年間会計報告と次期幹部候補の紹介。12月は予約が埋まりやすいため早め手配。',
+        tasks: [
+          { id: 't-5-1', title: '忘年会会場・個室の予約', offset: 30, category: 'place', assignee: '幹事', completed: false },
+          { id: 't-5-2', title: '忘年会の告知と出欠回答開始', offset: 21, category: 'announce', assignee: '幹事', completed: false },
+          { id: 't-5-3', title: '会費決定＆集金告知', offset: 12, category: 'money', assignee: '会計', completed: false },
+          { id: 't-5-4', title: 'お店への最終確定人数連絡＆支払い', offset: 0, category: 'money', assignee: '会計', completed: false }
+        ]
+      },
+      {
+        id: 'annual-6',
+        title: '卒業生追い出しコンパ（追いコン）',
+        category: 'party',
+        targetMonth: 3,
+        defaultDay: 14,
+        startOffset: 30,
+        endOffset: 10,
+        location: 'ホテル宴会場 / レストラン',
+        notes: '卒業生への記念品・色紙手配とアルバム制作期間を考慮すること。',
+        tasks: [
+          { id: 't-6-1', title: '会場候補の確保・下見', offset: 40, category: 'place', assignee: '後輩幹事', completed: false },
+          { id: 't-6-2', title: 'プレゼント代・色紙費用の予算決め', offset: 25, category: 'money', assignee: '会計', completed: false },
+          { id: 't-6-3', title: '記念品・色紙代の集金締切', offset: 12, category: 'money', assignee: '会計', completed: false },
+          { id: 't-6-4', title: 'プレゼント購入と記念品支払い', offset: 5, category: 'prep', assignee: 'プレゼント係', completed: false }
+        ]
+      }
+    ];
+
+    /* Common Task Template Presets for one-click insertion in Event Modal */
+    const QUICK_TASK_TEMPLATES = {
+      camp: [
+        { title: '宿・施設の候補選定と場所予約', offsetDays: 45, category: 'place', assignee: '合宿係' },
+        { title: '合宿全体の告知＆出欠受付開始', offsetDays: 40, category: 'announce', assignee: '広報' },
+        { title: 'バス・レンタカー等の交通手配', offsetDays: 30, category: 'place', assignee: '合宿係' },
+        { title: '合宿参加費（1人あたり金額）の決定', offsetDays: 25, category: 'money', assignee: '会計' },
+        { title: '宿への手付金・内金の支払い', offsetDays: 20, category: 'money', assignee: '会計' },
+        { title: '参加費の集金締切（振込確認）', offsetDays: 14, category: 'money', assignee: '会計' },
+        { title: '宿・交通機関への残金支払い', offsetDays: 0, category: 'money', assignee: '会計' }
+      ],
+      festival: [
+        { title: '実行委へ出店届・場所の申請提出', offsetDays: 35, category: 'place', assignee: '代表' },
+        { title: '企画詳細・予算・材料費決定', offsetDays: 30, category: 'money', assignee: '学祭係' },
+        { title: '学祭参加シフト募集の告知', offsetDays: 25, category: 'announce', assignee: '広報' },
+        { title: '材料・装飾・備品の買い出し＆支払い', offsetDays: 7, category: 'money', assignee: '買い出し班' },
+        { title: '当日の持ち物・集合シフトの全体告知', offsetDays: 3, category: 'announce', assignee: '学祭係' },
+        { title: '売上集金精算＆打ち上げ費用の清算', offsetDays: -1, category: 'money', assignee: '会計' }
+      ],
+      party: [
+        { title: '会場（居酒屋・お店）の候補決定と予約', offsetDays: 14, category: 'place', assignee: '幹事' },
+        { title: '飲み会告知と出欠受付開始', offsetDays: 12, category: 'announce', assignee: '幹事' },
+        { title: '参加費（一次会/二次会）の金額決定', offsetDays: 8, category: 'money', assignee: '会計' },
+        { title: '参加費の事前集金（PayPayまたは現金）', offsetDays: 3, category: 'money', assignee: '会計' },
+        { title: '店舗への人数最終確定連絡と当日支払い', offsetDays: 0, category: 'money', assignee: '幹事' }
+      ]
+    };
+
+    /* State Variables */
+    let events = [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
+      if (saved) events = JSON.parse(saved);
+    } catch (e) {
+      events = [];
+    }
+
+    let annualPresets = [];
+    try {
+      const savedPresets = localStorage.getItem(STORAGE_KEY_ANNUAL);
+      if (savedPresets) {
+        annualPresets = JSON.parse(savedPresets);
+      } else {
+        annualPresets = JSON.parse(JSON.stringify(DEFAULT_ANNUAL_PRESETS));
+      }
+    } catch (e) {
+      annualPresets = JSON.parse(JSON.stringify(DEFAULT_ANNUAL_PRESETS));
+    }
+
+    // Temporary tasks buffer during Event Modal editing
+    let currentModalTasks = [];
+
+    function saveEventsToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
+      } catch (e) {
+        console.error('Failed to save events', e);
+      }
+    }
+
+    function saveAnnualPresetsToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY_ANNUAL, JSON.stringify(annualPresets));
+      } catch (e) {
+        console.error('Failed to save presets', e);
+      }
+    }
+
+    /* Simulation Date and View State */
+    const realToday = new Date();
+    let simulatedToday = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate());
+    let currentViewingMonth = new Date(simulatedToday.getFullYear(), simulatedToday.getMonth(), 1);
+    let activeFilter = 'all';
+    let highlightedInstanceId = null;
+
+    /* Offset Presets */
+    const PRESETS = {
+      festival: { startOffset: 30, endOffset: 14, name: '学祭・大型行事' },
+      camp:     { startOffset: 45, endOffset: 21, name: '合宿・旅行' },
+      party:    { startOffset: 14, endOffset: 5,  name: '飲み会・懇親会' },
+      meeting:  { startOffset: 7,  endOffset: 2,  name: '定例ミーティング' },
+      other:    { startOffset: 21, endOffset: 7,  name: 'その他' }
+    };
+
+    /* Category styles */
+    const CATEGORY_STYLES = {
+      festival: { name: '学祭・大型行事', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+      camp:     { name: '合宿・旅行',     bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200' },
+      party:    { name: '飲み会・懇親',   bg: 'bg-amber-50',  text: 'text-amber-800',  border: 'border-amber-200' },
+      meeting:  { name: '定例会',         bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200' },
+      other:    { name: 'イベント',       bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    };
+
+    /* Expand recurring events into individual occurrences for rendering */
+    function getExpandedOccurrences(startDate, endDate) {
+      const occurrences = [];
+      const endTime = endDate ? endDate.getTime() : Infinity;
+
+      events.forEach(evt => {
+        const rootDate = parseDateStr(evt.eventDate);
+        const recurrence = evt.recurrence || 'none';
+        const recurrenceEndType = evt.recurrenceEndType || 'count';
+        const untilDate = evt.recurrenceUntil ? parseDateStr(evt.recurrenceUntil) : null;
+        const targetCount = (recurrenceEndType === 'count') ? (parseInt(evt.recurrenceCount, 10) || 10) : 52;
+        const deletedDates = evt.deletedOccurrences || [];
+        const rawTasks = evt.tasks || [];
+
+        if (recurrence === 'none') {
+          occurrences.push({
+            ...evt,
+            tasks: rawTasks,
+            instanceId: evt.id,
+            isRecurringInstance: false
+          });
+          return;
+        }
+
+        let cur = new Date(rootDate);
+        let instanceIndex = 1;
+        const maxLimit = Math.min(52, targetCount);
+
+        while (instanceIndex <= maxLimit) {
+          if (recurrenceEndType === 'until' && untilDate && cur.getTime() > untilDate.getTime()) break;
+          if (endTime !== Infinity && cur.getTime() > endTime + 45 * 24 * 60 * 60 * 1000) break;
+
+          const curDateStr = formatDateStr(cur);
+
+          if (!deletedDates.includes(curDateStr)) {
+            // Recalculate task due dates for this specific recurring occurrence based on offset
+            const instanceTasks = rawTasks.map(t => {
+              const diffFromRoot = t.dueDate ? diffInDays(parseDateStr(t.dueDate), rootDate) : (t.offset || 0);
+              const instDueDate = formatDateStr(addDays(cur, -diffFromRoot));
+              return {
+                ...t,
+                dueDate: instDueDate
+              };
+            });
+
+            occurrences.push({
+              ...evt,
+              eventDate: curDateStr,
+              tasks: instanceTasks,
+              instanceId: `${evt.id}__occ_${curDateStr}`,
+              isRecurringInstance: true,
+              occurrenceIndex: instanceIndex,
+              occurrenceDateStr: curDateStr,
+              originalEventId: evt.id
+            });
+          }
+
+          if (recurrence === 'weekly') {
+            cur = addDays(cur, 7);
+          } else if (recurrence === 'biweekly') {
+            cur = addDays(cur, 14);
+          } else if (recurrence === 'monthly') {
+            cur = new Date(cur.getFullYear(), cur.getMonth() + 1, rootDate.getDate());
+          } else {
+            break;
+          }
+          instanceIndex++;
+        }
+      });
+
+      return occurrences;
+    }
+
+    /* Calculate Vote Start & End dates for an event */
+    function getEventTimeline(evt) {
+      const eDate = parseDateStr(evt.eventDate);
+      let startDate, endDate;
+
+      if (evt.voteStartDate && evt.voteEndDate && !evt.isRecurringInstance) {
+        startDate = parseDateStr(evt.voteStartDate);
+        endDate = parseDateStr(evt.voteEndDate);
+      } else {
+        startDate = addDays(eDate, -(evt.startOffset || 30));
+        endDate = addDays(eDate, -(evt.endOffset || 14));
+      }
+
+      const totalVotingDays = diffInDays(startDate, endDate) + 1;
+      const prepDays = diffInDays(endDate, eDate);
+
+      return {
+        eventDate: eDate,
+        voteStartDate: startDate,
+        voteEndDate: endDate,
+        eventDateStr: evt.eventDate,
+        startDateStr: formatDateStr(startDate),
+        endDateStr: formatDateStr(endDate),
+        daysTotalVoting: totalVotingDays,
+        prepDays: Math.max(0, prepDays)
+      };
+    }
+
+    function getEventStatus(evt) {
+      const { eventDate, voteStartDate, voteEndDate } = getEventTimeline(evt);
+      const todayTime = simulatedToday.getTime();
+      const sTime = voteStartDate.getTime();
+      const eTime = voteEndDate.getTime();
+      const evtTime = eventDate.getTime();
+
+      if (todayTime > evtTime) {
+        return { key: 'finished', label: 'イベント終了', badgeClass: 'bg-slate-100 text-slate-500 border-slate-200' };
+      }
+      if (todayTime === evtTime) {
+        return { key: 'event-day', label: '本日が本番！', badgeClass: 'bg-amber-500 text-white font-bold animate-bounce' };
+      }
+      if (todayTime > eTime) {
+        const leftDays = Math.ceil((evtTime - todayTime) / (1000 * 60 * 60 * 24));
+        return { key: 'vote-ended', label: `投票締切済 (本番まで${leftDays}日)`, badgeClass: 'bg-purple-100 text-purple-700 border-purple-200' };
+      }
+      if (todayTime >= sTime && todayTime <= eTime) {
+        const leftDays = Math.ceil((eTime - todayTime) / (1000 * 60 * 60 * 24));
+        if (leftDays <= 3) {
+          return { key: 'voting', label: `締切間近！(あと${leftDays}日)`, badgeClass: 'bg-rose-500 text-white font-bold animate-pulse' };
+        }
+        return { key: 'voting', label: `投票受付中 (あと${leftDays}日)`, badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold' };
+      }
+      const waitDays = Math.ceil((sTime - todayTime) / (1000 * 60 * 60 * 24));
+      return { key: 'upcoming-vote', label: `投票開始まで${waitDays}日`, badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' };
+    }
+
+    /* Helper: Task statistics for an event */
+    function getEventTaskStats(evt) {
+      const tasks = evt.tasks || [];
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.completed).length;
+      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+      const pendingTasks = tasks.filter(t => !t.completed);
+      const hasMoneyTasks = tasks.some(t => t.category === 'money' && !t.completed);
+      return { total, completed, percent, pendingTasks, hasMoneyTasks };
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = message;
+      if (type === 'success') {
+        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400';
+      } else {
+        toastIcon.className = 'fa-solid fa-circle-exclamation text-amber-400';
+      }
+      toast.classList.remove('translate-y-12', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('translate-y-12', 'opacity-0', 'pointer-events-none');
+      }, 2600);
+    }
+
+    /* Render Calendar */
+    function renderCalendar() {
+      const container = document.getElementById('calendarWeeksContainer');
+      const monthLabel = document.getElementById('currentMonthLabel');
+      container.innerHTML = '';
+
+      const year = currentViewingMonth.getFullYear();
+      const month = currentViewingMonth.getMonth();
+
+      monthLabel.textContent = `${year}年 ${month + 1}月`;
+
+      const firstDay = new Date(year, month, 1);
+      const startingDayOfWeek = firstDay.getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevMonthDays = new Date(year, month, 0).getDate();
+
+      const todayStr = formatDateStr(simulatedToday);
+
+      const totalDays = Math.ceil((startingDayOfWeek + daysInMonth) / 7) * 7;
+      const allDays = [];
+
+      for (let i = 0; i < totalDays; i++) {
+        let cellDate;
+        let isCurrentMonth = true;
+
+        if (i < startingDayOfWeek) {
+          const d = prevMonthDays - (startingDayOfWeek - 1 - i);
+          cellDate = new Date(year, month - 1, d);
+          isCurrentMonth = false;
+        } else if (i >= startingDayOfWeek + daysInMonth) {
+          const d = i - (startingDayOfWeek + daysInMonth) + 1;
+          cellDate = new Date(year, month + 1, d);
+          isCurrentMonth = false;
+        } else {
+          const d = i - startingDayOfWeek + 1;
+          cellDate = new Date(year, month, d);
+        }
+
+        allDays.push({
+          date: cellDate,
+          dateStr: formatDateStr(cellDate),
+          isCurrentMonth,
+          dayOfWeek: cellDate.getDay()
+        });
+      }
+
+      const weeks = [];
+      for (let i = 0; i < allDays.length; i += 7) {
+        weeks.push(allDays.slice(i, i + 7));
+      }
+
+      const viewMonthStart = new Date(year, month - 1, 1);
+      const viewMonthEnd = new Date(year, month + 2, 28);
+      const activeOccurrences = getExpandedOccurrences(viewMonthStart, viewMonthEnd);
+
+      weeks.forEach(weekDays => {
+        const weekRow = document.createElement('div');
+        weekRow.className = 'relative min-h-[115px] sm:min-h-[130px] flex flex-col group';
+
+        const bgGrid = document.createElement('div');
+        bgGrid.className = 'grid grid-cols-7 absolute inset-0 divide-x divide-slate-100 pointer-events-none';
+
+        weekDays.forEach(dayInfo => {
+          const cellBg = document.createElement('div');
+          const isSimulatedToday = (dayInfo.dateStr === todayStr);
+
+          // Find tasks due on this cell date
+          const tasksOnThisDay = [];
+          activeOccurrences.forEach(evt => {
+            (evt.tasks || []).forEach(tsk => {
+              if (tsk.dueDate === dayInfo.dateStr) {
+                tasksOnThisDay.push({ evt, task: tsk });
+              }
+            });
+          });
+
+          cellBg.className = `p-1 sm:p-1.5 flex flex-col justify-between transition pointer-events-auto cursor-pointer ${
+            dayInfo.isCurrentMonth ? 'bg-white hover:bg-slate-50/60' : 'bg-slate-50/40 hover:bg-slate-100/50'
+          }`;
+
+          cellBg.onclick = () => {
+            openNewEventModal(dayInfo.dateStr);
+          };
+
+          const header = document.createElement('div');
+          header.className = 'flex items-center justify-between text-xs select-none';
+
+          const numSpan = document.createElement('span');
+          numSpan.textContent = dayInfo.date.getDate();
+
+          if (!dayInfo.isCurrentMonth) {
+            numSpan.className = 'text-slate-300 font-medium';
+          } else if (dayInfo.dayOfWeek === 0) {
+            numSpan.className = 'text-rose-500 font-bold';
+          } else if (dayInfo.dayOfWeek === 6) {
+            numSpan.className = 'text-blue-500 font-bold';
+          } else {
+            numSpan.className = 'text-slate-700 font-semibold';
+          }
+
+          if (isSimulatedToday) {
+            numSpan.className = 'bg-teal-600 text-white font-bold w-5 h-5 rounded-full flex items-center justify-center text-[11px] shadow-sm';
+          }
+
+          header.appendChild(numSpan);
+
+          // Task icons container in cell corner
+          if (tasksOnThisDay.length > 0) {
+            const taskBadge = document.createElement('div');
+            taskBadge.className = 'flex items-center space-x-1';
+            const hasMoney = tasksOnThisDay.some(t => t.task.category === 'money');
+            const hasPending = tasksOnThisDay.some(t => !t.task.completed);
+            
+            taskBadge.innerHTML = `
+              <span class="inline-flex items-center text-[9px] px-1 py-0.2 rounded font-bold ${hasPending ? (hasMoney ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-sky-100 text-sky-800') : 'bg-slate-100 text-slate-500 line-through'}" title="${tasksOnThisDay.map(t => (t.task.completed ? '✓ ' : '□ ') + t.task.title).join('\n')}">
+                ${hasMoney ? '<i class="fa-solid fa-coins text-[8px] mr-0.5 text-amber-600"></i>' : '<i class="fa-solid fa-check text-[8px] mr-0.5"></i>'}
+                ${tasksOnThisDay.length}
+              </span>
+            `;
+            header.appendChild(taskBadge);
+          } else {
+            const addBtn = document.createElement('button');
+            addBtn.className = 'opacity-0 group-hover:opacity-100 text-slate-400 hover:text-teal-600 text-[10px] transition no-print';
+            addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+            addBtn.title = 'この日に予定を追加';
+            addBtn.onclick = (e) => {
+              e.stopPropagation();
+              openNewEventModal(dayInfo.dateStr);
+            };
+            header.appendChild(addBtn);
+          }
+
+          cellBg.appendChild(header);
+          bgGrid.appendChild(cellBg);
+        });
+
+        weekRow.appendChild(bgGrid);
+
+        /* Connected Span Bars Layer */
+        const weekStartDate = weekDays[0].date;
+        const weekEndDate = weekDays[6].date;
+        const weekStartTime = weekStartDate.getTime();
+        const weekEndTime = weekEndDate.getTime();
+
+        const weekItems = [];
+
+        activeOccurrences.forEach(evt => {
+          const timeline = getEventTimeline(evt);
+          const voteStartTime = timeline.voteStartDate.getTime();
+          const voteEndTime = timeline.voteEndDate.getTime();
+          const evtTime = timeline.eventDate.getTime();
+
+          if (voteStartTime <= weekEndTime && voteEndTime >= weekStartTime) {
+            let startCol = 0;
+            let endCol = 6;
+            let isActualStart = false;
+            let isActualEnd = false;
+
+            weekDays.forEach((d, idx) => {
+              const dt = d.date.getTime();
+              if (dt === voteStartTime) {
+                startCol = idx;
+                isActualStart = true;
+              } else if (dt < voteStartTime && idx > startCol) {
+                startCol = idx + 1;
+              }
+
+              if (dt === voteEndTime) {
+                endCol = idx;
+                isActualEnd = true;
+              }
+            });
+
+            if (voteStartTime > weekStartTime) {
+              const daysDiff = Math.round((voteStartTime - weekStartTime) / (1000 * 60 * 60 * 24));
+              startCol = Math.max(0, Math.min(6, daysDiff));
+            }
+            if (voteEndTime < weekEndTime) {
+              const daysDiff = Math.round((voteEndTime - weekStartTime) / (1000 * 60 * 60 * 24));
+              endCol = Math.max(0, Math.min(6, daysDiff));
+            }
+
+            weekItems.push({
+              type: 'vote-period',
+              evt,
+              timeline,
+              startCol,
+              endCol,
+              span: endCol - startCol + 1,
+              isActualStart,
+              isActualEnd
+            });
+          }
+
+          if (evtTime >= weekStartTime && evtTime <= weekEndTime) {
+            const col = Math.round((evtTime - weekStartTime) / (1000 * 60 * 60 * 24));
+            if (col >= 0 && col <= 6) {
+              weekItems.push({
+                type: 'event-day',
+                evt,
+                timeline,
+                startCol: col,
+                endCol: col,
+                span: 1,
+                isActualStart: true,
+                isActualEnd: true
+              });
+            }
+          }
+        });
+
+        /* Track allocation to avoid collisions */
+        const tracks = [];
+        weekItems.sort((a, b) => {
+          if (a.type !== b.type) return a.type === 'vote-period' ? -1 : 1;
+          return a.startCol - b.startCol || b.span - a.span;
+        });
+
+        weekItems.forEach(item => {
+          let placedTrackIdx = -1;
+          for (let t = 0; t < tracks.length; t++) {
+            let collision = false;
+            for (let c = item.startCol; c <= item.endCol; c++) {
+              if (tracks[t][c]) {
+                collision = true;
+                break;
+              }
+            }
+            if (!collision) {
+              placedTrackIdx = t;
+              break;
+            }
+          }
+
+          if (placedTrackIdx === -1) {
+            tracks.push(new Array(7).fill(false));
+            placedTrackIdx = tracks.length - 1;
+          }
+
+          for (let c = item.startCol; c <= item.endCol; c++) {
+            tracks[placedTrackIdx][c] = true;
+          }
+
+          item.trackIndex = placedTrackIdx;
+        });
+
+        const tracksLayer = document.createElement('div');
+        tracksLayer.className = 'relative pt-7 pb-2 px-1 z-10 space-y-1 pointer-events-none flex-1';
+
+        tracks.forEach((_, tIdx) => {
+          const trackRow = document.createElement('div');
+          trackRow.className = 'grid grid-cols-7 gap-1 h-5 sm:h-6';
+
+          const itemsInTrack = weekItems.filter(item => item.trackIndex === tIdx);
+          itemsInTrack.forEach(item => {
+            const bar = document.createElement('div');
+            bar.style.gridColumnStart = item.startCol + 1;
+            bar.style.gridColumnEnd = `span ${item.span}`;
+            bar.setAttribute('data-instance-id', item.evt.instanceId);
+
+            const isHighlighted = (highlightedInstanceId === item.evt.instanceId);
+            const highlightClass = isHighlighted ? 'calendar-item-highlighted' : '';
+            const repeatIcon = (item.evt.recurrence && item.evt.recurrence !== 'none') ? '<i class="fa-solid fa-arrows-rotate mr-1 opacity-75 text-[9px]"></i>' : '';
+            const taskStats = getEventTaskStats(item.evt);
+            const taskIcon = taskStats.total > 0 ? `<span class="ml-1 text-[9px] opacity-90 font-mono">(${taskStats.completed}/${taskStats.total})</span>` : '';
+
+            if (item.type === 'event-day') {
+              bar.className = `pointer-events-auto cursor-pointer bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold flex items-center justify-between shadow-sm transition truncate ${highlightClass}`;
+              bar.innerHTML = `
+                <span class="truncate flex items-center">
+                  <i class="fa-solid fa-flag-checkered mr-1 text-amber-200"></i>
+                  ${repeatIcon}
+                  ${item.evt.title}
+                  ${taskIcon}
+                </span>
+                <span class="text-[9px] bg-amber-700/60 px-1 rounded ml-1 hidden sm:inline">本番</span>
+              `;
+            } else {
+              const isStartRounded = item.isActualStart ? 'rounded-l-md ml-0.5' : 'rounded-l-none border-l-0';
+              const isEndRounded = item.isActualEnd ? 'rounded-r-md mr-0.5' : 'rounded-r-none border-r-0';
+
+              let endAlert = '';
+              if (item.isActualEnd) {
+                endAlert = '<span class="text-[9px] bg-rose-500 text-white px-1 py-0.2 rounded font-bold ml-1 shrink-0">締切日</span>';
+              }
+
+              bar.className = `pointer-events-auto cursor-pointer bg-emerald-500/90 hover:bg-emerald-600 text-white border-y border-emerald-600 ${isStartRounded} ${isEndRounded} px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium flex items-center justify-between shadow-sm transition truncate ${highlightClass}`;
+              bar.innerHTML = `
+                <span class="truncate flex items-center">
+                  <i class="fa-solid fa-vote-yea mr-1 text-emerald-200"></i>
+                  ${repeatIcon}
+                  ${item.isActualStart ? '<span class="font-bold mr-1">投票開始:</span>' : ''}
+                  ${item.evt.title}
+                </span>
+                ${endAlert}
+              `;
+            }
+
+            bar.onclick = (e) => {
+              e.stopPropagation();
+              selectAndHighlightSchedule(item.evt);
+              openDetailModal(item.evt);
+            };
+
+            trackRow.appendChild(bar);
+          });
+
+          tracksLayer.appendChild(trackRow);
+        });
+
+        weekRow.appendChild(tracksLayer);
+        container.appendChild(weekRow);
+      });
+    }
+
+    /* Highlight schedule */
+    function selectAndHighlightSchedule(evt, openModal = false) {
+      if (!evt) return;
+      highlightedInstanceId = evt.instanceId;
+
+      const targetDate = parseDateStr(evt.eventDate);
+      const targetYear = targetDate.getFullYear();
+      const targetMonth = targetDate.getMonth();
+
+      let monthChanged = false;
+      if (currentViewingMonth.getFullYear() !== targetYear || currentViewingMonth.getMonth() !== targetMonth) {
+        currentViewingMonth = new Date(targetYear, targetMonth, 1);
+        monthChanged = true;
+      }
+
+      renderCalendar();
+      renderEventList();
+
+      if (monthChanged) {
+        showToast(`カレンダーを ${targetYear}年${targetMonth + 1}月 に移動しました`);
+      } else {
+        showToast(`「${evt.title}」を強調表示しました`);
+      }
+
+      if (window.innerWidth < 1024) {
+        const cal = document.querySelector('.calendar-container');
+        if (cal) cal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      if (openModal) {
+        openDetailModal(evt);
+      }
+    }
+
+    function clearScheduleHighlight(showNotice = true) {
+      if (highlightedInstanceId !== null) {
+        highlightedInstanceId = null;
+        renderCalendar();
+        renderEventList();
+        if (showNotice) showToast('選択を解除しました');
+      }
+    }
+
+    /* Render Event Timeline Cards on Side */
+    function renderEventList() {
+      const container = document.getElementById('eventListContainer');
+      const filteredCountEl = document.getElementById('eventsFilteredCount');
+      const clearBtn = document.getElementById('clearHighlightBtn');
+      container.innerHTML = '';
+
+      if (clearBtn) {
+        if (highlightedInstanceId) {
+          clearBtn.classList.remove('hidden');
+        } else {
+          clearBtn.classList.add('hidden');
+        }
+      }
+
+      const listStartDate = addDays(simulatedToday, -15);
+      const listEndDate = addDays(simulatedToday, 180);
+      const allOccurrences = getExpandedOccurrences(listStartDate, listEndDate);
+
+      let countAll = allOccurrences.length;
+      let countVoting = 0;
+      let countUpcomingVote = 0;
+      let countVoteEnded = 0;
+      let countPendingTasksTotal = 0;
+
+      allOccurrences.forEach(evt => {
+        const status = getEventStatus(evt);
+        if (status.key === 'voting') countVoting++;
+        if (status.key === 'upcoming-vote') countUpcomingVote++;
+        if (status.key === 'vote-ended') countVoteEnded++;
+        const stats = getEventTaskStats(evt);
+        if (stats.pendingTasks.length > 0) countPendingTasksTotal++;
+      });
+
+      document.getElementById('countAll').textContent = countAll;
+      document.getElementById('countVoting').textContent = countVoting;
+      document.getElementById('countUpcomingVote').textContent = countUpcomingVote;
+      document.getElementById('countVoteEnded').textContent = countVoteEnded;
+      document.getElementById('countPendingTasks').textContent = countPendingTasksTotal;
+
+      const filteredEvents = allOccurrences.filter(evt => {
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'has-tasks') {
+          const stats = getEventTaskStats(evt);
+          return stats.pendingTasks.length > 0;
+        }
+        const status = getEventStatus(evt);
+        return status.key === activeFilter;
+      });
+
+      filteredEvents.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+      filteredCountEl.textContent = `${filteredEvents.length}件`;
+
+      if (filteredEvents.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-300">
+              <i class="fa-regular fa-calendar-xmark text-xl"></i>
+            </div>
+            <p class="font-bold text-slate-600 mb-1">表示できる予定がありません</p>
+            <p class="text-[11px] text-slate-400 mb-4">右上の「恒例行事」または「予定を追加」から日程やタスクを登録してください。</p>
+            <button onclick="document.getElementById('openAnnualModalBtn').click()" class="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-lg text-xs border border-amber-300 transition">
+              <i class="fa-solid fa-star text-amber-500 mr-1"></i> 恒例行事から選んで作成
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      filteredEvents.forEach(evt => {
+        const timeline = getEventTimeline(evt);
+        const status = getEventStatus(evt);
+        const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
+        const isRecurring = evt.recurrence && evt.recurrence !== 'none';
+        const isSelected = (highlightedInstanceId === evt.instanceId);
+        const taskStats = getEventTaskStats(evt);
+
+        const card = document.createElement('div');
+        const activeClasses = isSelected
+          ? 'border-amber-400 bg-amber-50/40 ring-2 ring-amber-400 shadow-md scale-[1.01]'
+          : 'border-slate-200 hover:border-teal-400 bg-white hover:shadow-md';
+
+        card.className = `event-card-item p-3.5 rounded-xl border transition cursor-pointer group flex flex-col gap-2.5 ${activeClasses}`;
+        
+        card.onclick = (e) => {
+          e.stopPropagation();
+          if (highlightedInstanceId === evt.instanceId) {
+            clearScheduleHighlight();
+          } else {
+            selectAndHighlightSchedule(evt);
+          }
+        };
+
+        const repeatBadge = isRecurring ? `
+          <span class="inline-flex items-center text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded ml-1.5">
+            <i class="fa-solid fa-arrows-rotate mr-1 text-[9px]"></i>定期 #${evt.occurrenceIndex || 1}
+          </span>` : '';
+
+        // Task progress badge & upcoming pending tasks summary
+        let taskSnippet = '';
+        if (taskStats.total > 0) {
+          const urgentTask = taskStats.pendingTasks[0];
+          taskSnippet = `
+            <div class="p-2 bg-slate-50 rounded-lg border border-slate-100 text-[11px] space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-700 flex items-center">
+                  <i class="fa-solid fa-list-check text-amber-600 mr-1"></i>タスク進捗:
+                </span>
+                <span class="font-bold ${taskStats.completed === taskStats.total ? 'text-emerald-700' : 'text-amber-800'}">
+                  ${taskStats.completed}/${taskStats.total}完了 (${taskStats.percent}%)
+                </span>
+              </div>
+              <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-teal-600 h-full rounded-full" style="width: ${taskStats.percent}%"></div>
+              </div>
+              ${urgentTask ? `
+                <div class="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                  <span class="truncate"><strong class="text-amber-900">次:</strong> ${urgentTask.title}</span>
+                  <span class="shrink-0 font-medium ${urgentTask.dueDate <= formatDateStr(simulatedToday) ? 'text-rose-600 font-bold' : 'text-slate-500'}">
+                    ${urgentTask.dueDate ? urgentTask.dueDate.slice(5) : ''}
+                  </span>
+                </div>` : '<div class="text-[10px] text-emerald-600 font-bold">全タスク完了！</div>'}
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center flex-wrap mb-1">
+                <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${catStyle.bg} ${catStyle.text}">
+                  ${catStyle.name}
+                </span>
+                ${repeatBadge}
+                ${isSelected ? '<span class="ml-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded animate-pulse">カレンダー強調中</span>' : ''}
+              </div>
+              <h4 class="font-bold text-xs text-slate-900 group-hover:text-teal-700 transition leading-snug">
+                ${evt.title}
+              </h4>
+            </div>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${status.badgeClass}">
+              ${status.label}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+            <div>
+              <span class="text-slate-400 block text-[9px]">投票期間:</span>
+              <span class="font-bold text-teal-800"><i class="fa-regular fa-calendar-check text-teal-600 mr-1"></i>${timeline.startDateStr} 〜 ${timeline.endDateStr}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[9px]">本番日:</span>
+              <span class="font-bold text-amber-900"><i class="fa-solid fa-flag-checkered text-amber-500 mr-1"></i>${evt.eventDate}</span>
+            </div>
+          </div>
+
+          ${taskSnippet}
+
+          <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100/70">
+            <span>受付: ${timeline.daysTotalVoting}日間 (準備猶予${timeline.prepDays}日)</span>
+            <div class="flex items-center space-x-1.5">
+              <button type="button" class="view-detail-btn px-2.5 py-1 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-700 font-semibold rounded-md transition" title="詳細・タスク管理と告知文コピー">
+                <i class="fa-solid fa-circle-info mr-1"></i>詳細・タスク
+              </button>
+            </div>
+          </div>
+        `;
+
+        const detailBtn = card.querySelector('.view-detail-btn');
+        if (detailBtn) {
+          detailBtn.onclick = (e) => {
+            e.stopPropagation();
+            selectAndHighlightSchedule(evt);
+            openDetailModal(evt);
+          };
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    /* ========================================================= */
+    /* 1. Sheet View & Export Engine                             */
+    /* ========================================================= */
+
+    function getSheetDataset() {
+      const scope = document.getElementById('sheetScopeFilter').value;
+      const allOccurrences = getExpandedOccurrences(new Date(1970, 0, 1), new Date(2099, 11, 31));
+
+      let dataset = allOccurrences;
+      const currentYear = simulatedToday.getFullYear();
+
+      if (scope === 'current-year') {
+        let fiscalStartYear = currentYear;
+        if (simulatedToday.getMonth() < 3) fiscalStartYear = currentYear - 1;
+        const startFiscal = new Date(fiscalStartYear, 3, 1).getTime();
+        const endFiscal = new Date(fiscalStartYear + 1, 2, 31, 23, 59, 59).getTime();
+
+        dataset = dataset.filter(item => {
+          const t = parseDateStr(item.eventDate).getTime();
+          return t >= startFiscal && t <= endFiscal;
+        });
+      } else if (scope === 'current-month') {
+        const y = currentViewingMonth.getFullYear();
+        const m = currentViewingMonth.getMonth();
+        const startMonth = new Date(y, m, 1).getTime();
+        const endMonth = new Date(y, m + 1, 0, 23, 59, 59).getTime();
+
+        dataset = dataset.filter(item => {
+          const t = parseDateStr(item.eventDate).getTime();
+          return t >= startMonth && t <= endMonth;
+        });
+      }
+
+      dataset.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+      return dataset;
+    }
+
+    function renderSheetTable() {
+      const tbody = document.getElementById('sheetTableBody');
+      const badge = document.getElementById('sheetRowCountBadge');
+      tbody.innerHTML = '';
+
+      const dataset = getSheetDataset();
+      badge.textContent = `${dataset.length}件`;
+
+      if (dataset.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="11" class="text-center py-8 text-slate-400 text-xs">
+              該当するスケジュール情報がありません。
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      dataset.forEach((evt, idx) => {
+        const timeline = getEventTimeline(evt);
+        const status = getEventStatus(evt);
+        const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
+        const taskStats = getEventTaskStats(evt);
+
+        const pendingTaskSummary = taskStats.pendingTasks.map(t => {
+          const cat = TASK_CATEGORIES[t.category] || TASK_CATEGORIES.other;
+          return `[${cat.name}] ${t.title} (${t.dueDate || '期日未定'})`;
+        }).join(' / ') || '残タスクなし';
+
+        const row = document.createElement('tr');
+        row.className = idx % 2 === 0 ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/50 hover:bg-slate-50';
+
+        row.innerHTML = `
+          <td class="p-3 border-r border-slate-200 text-slate-400 font-mono text-center">${idx + 1}</td>
+          <td class="p-3 border-r border-slate-200 font-bold text-slate-900">${evt.title}</td>
+          <td class="p-3 border-r border-slate-200">
+            <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded ${catStyle.bg} ${catStyle.text}">
+              ${catStyle.name}
+            </span>
+          </td>
+          <td class="p-3 border-r border-slate-200 font-bold text-amber-900 bg-amber-50/30 whitespace-nowrap">${evt.eventDate}</td>
+          <td class="p-3 border-r border-slate-200 text-teal-900 bg-teal-50/30 font-medium whitespace-nowrap">${timeline.startDateStr} 〜 ${timeline.endDateStr}</td>
+          <td class="p-3 border-r border-slate-200 text-center font-bold text-indigo-700">${timeline.prepDays}日間</td>
+          <td class="p-3 border-r border-slate-200 text-center font-semibold">
+            ${taskStats.total > 0 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${taskStats.completed === taskStats.total ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}">${taskStats.completed} / ${taskStats.total} (${taskStats.percent}%)</span>` : '<span class="text-slate-400">-</span>'}
+          </td>
+          <td class="p-3 border-r border-slate-200 max-w-xs truncate text-[11px] text-slate-600" title="${pendingTaskSummary}">
+            ${pendingTaskSummary}
+          </td>
+          <td class="p-3 border-r border-slate-200 text-slate-600">${evt.location || '-'}</td>
+          <td class="p-3 border-r border-slate-200 whitespace-nowrap">
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${status.badgeClass}">
+              ${status.label}
+            </span>
+          </td>
+          <td class="p-3 text-slate-600 max-w-xs truncate" title="${(evt.notes || '').replace(/"/g, '&quot;')}">${evt.notes || '-'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    document.getElementById('sheetScopeFilter').addEventListener('change', renderSheetTable);
+
+    /* TSV Copy for Google Sheets & Excel Clipboard */
+    document.getElementById('copyTsvSheetBtn').addEventListener('click', () => {
+      const dataset = getSheetDataset();
+      if (dataset.length === 0) {
+        showToast('コピー対象のスケジュールがありません', 'error');
+        return;
+      }
+
+      const headers = ['No.', 'イベント名', 'カテゴリー', '本番予定日', '投票開始日', '投票締切日', '受付日数', '準備猶予日数', 'タスク進捗', '残タスク一覧(集金・場所・告知など)', '場所・会場', '状態', 'メモ・注意事項'];
+      const rows = dataset.map((evt, idx) => {
+        const timeline = getEventTimeline(evt);
+        const status = getEventStatus(evt);
+        const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
+        const taskStats = getEventTaskStats(evt);
+
+        const cleanNotes = (evt.notes || '').replace(/[\r\n\t]/g, ' ');
+        const cleanLocation = (evt.location || '').replace(/[\r\n\t]/g, ' ');
+        const pendingTasksText = taskStats.pendingTasks.map(t => `${t.title}(期日:${t.dueDate || '未定'})`).join(', ') || '残タスクなし';
+
+        return [
+          idx + 1,
+          evt.title,
+          catStyle.name,
+          evt.eventDate,
+          timeline.startDateStr,
+          timeline.endDateStr,
+          `${timeline.daysTotalVoting}日間`,
+          `${timeline.prepDays}日間`,
+          taskStats.total > 0 ? `${taskStats.completed}/${taskStats.total}完了(${taskStats.percent}%)` : 'なし',
+          pendingTasksText,
+          cleanLocation,
+          status.label,
+          cleanNotes
+        ].join('\t');
+      });
+
+      const tsvContent = [headers.join('\t'), ...rows].join('\n');
+
+      navigator.clipboard.writeText(tsvContent).then(() => {
+        showToast('スプレッドシート用データをコピーしました！セルにそのまま貼り付け（Ctrl+V）できます');
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = tsvContent;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('スプレッドシート用データをコピーしました！');
+      });
+    });
+
+    /* CSV Download with UTF-8 BOM */
+    document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+      const dataset = getSheetDataset();
+      if (dataset.length === 0) {
+        showToast('出力対象のスケジュールがありません', 'error');
+        return;
+      }
+
+      const escapeCsv = (str) => {
+        if (str === null || str === undefined) return '""';
+        const s = String(str).replace(/"/g, '""');
+        return `"${s}"`;
+      };
+
+      const headers = ['No.', 'イベント名', 'カテゴリー', '本番予定日', '投票開始日', '投票締切日', '受付日数', '準備猶予日数', 'タスク完了率', '未完了タスク一覧', '場所・会場', 'ステータス', 'メモ・注意事項'];
+      
+      const csvRows = [headers.map(escapeCsv).join(',')];
+
+      dataset.forEach((evt, idx) => {
+        const timeline = getEventTimeline(evt);
+        const status = getEventStatus(evt);
+        const catStyle = CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other;
+        const taskStats = getEventTaskStats(evt);
+        const pendingTasksText = taskStats.pendingTasks.map(t => `${t.title}(${t.dueDate || '期日未定'})`).join('; ') || '残タスクなし';
+
+        const row = [
+          idx + 1,
+          evt.title,
+          catStyle.name,
+          evt.eventDate,
+          timeline.startDateStr,
+          timeline.endDateStr,
+          `${timeline.daysTotalVoting}日間`,
+          `${timeline.prepDays}日間`,
+          taskStats.total > 0 ? `${taskStats.completed}/${taskStats.total} (${taskStats.percent}%)` : '0%',
+          pendingTasksText,
+          evt.location || '',
+          status.label,
+          evt.notes || ''
+        ];
+        csvRows.push(row.map(escapeCsv).join(','));
+      });
+
+      const csvString = '\uFEFF' + csvRows.join('\r\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `circle_schedule_tasks_${formatDateStr(new Date())}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Excel対応CSVファイルをダウンロードしました');
+    });
+
+    /* Print Sheet Table directly */
+    document.getElementById('printSheetTableBtn').addEventListener('click', () => {
+      const dataset = getSheetDataset();
+      const printWindow = window.open('', '_blank', 'width=1150,height=800');
+      if (!printWindow) {
+        showToast('ポップアップを許可してください', 'error');
+        return;
+      }
+
+      const rowsHtml = dataset.map((evt, idx) => {
+        const tl = getEventTimeline(evt);
+        const cat = (CATEGORY_STYLES[evt.category] || CATEGORY_STYLES.other).name;
+        const ts = getEventTaskStats(evt);
+        return `
+          <tr>
+            <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${idx + 1}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold;">${evt.title}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px;">${cat}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px; font-weight:bold; color:#92400e;">${evt.eventDate}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px; color:#065f46;">${tl.startDateStr} 〜 ${tl.endDateStr}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px; text-align:center; font-weight:bold;">${tl.prepDays}日</td>
+            <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${ts.total > 0 ? `${ts.completed}/${ts.total} (${ts.percent}%)` : '-'}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px; font-size:10px;">${ts.pendingTasks.map(t => t.title).join(', ') || '完了'}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px;">${evt.location || '-'}</td>
+            <td style="border:1px solid #cbd5e1; padding:6px;">${evt.notes || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const printHtml = `
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+          <meta charset="UTF-8">
+          <title>サークル年間スケジュール＆タスク進捗シート</title>
+          <style>
+            body { font-family: sans-serif; font-size: 11px; padding: 20px; color: #1e293b; }
+            h1 { font-size: 18px; margin-bottom: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px; font-size: 11px; text-align: left; }
+            @page { size: A4 landscape; margin: 8mm; }
+          </style>
+        </head>
+        <body>
+          <h1>サークル日程・出欠投票＆準備タスク一覧シート</h1>
+          <p>出力日: ${formatJapaneseDate(new Date())} | 全${dataset.length}件</p>
+          <table>
+            <thead>
+              <tr>
+                <th>No</th><th>イベント名</th><th>区分</th><th>本番日程</th><th>投票期間</th><th>猶予</th><th>タスク</th><th>主な残タスク</th><th>会場</th><th>備考</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() { window.print(); };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.open();
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+    });
+
+    /* ========================================================= */
+    /* 2. Annual Routine & Presets Management                    */
+    /* ========================================================= */
+
+    function populateAnnualTargetYearSelect() {
+      const select = document.getElementById('annualTargetYear');
+      select.innerHTML = '';
+      const currentYear = simulatedToday.getFullYear();
+      const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+
+      years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = `${y}年度`;
+        if (y === currentYear) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderAnnualPresetsList() {
+      const container = document.getElementById('annualPresetsContainer');
+      container.innerHTML = '';
+
+      if (annualPresets.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400">
+            <p class="font-bold text-slate-600 mb-1">恒例イベントが登録されていません</p>
+            <p class="text-xs text-slate-400 mb-4">サークルの定期行事や定番イベントを登録すると、来年度以降の予定作成が劇的にスムーズになります。</p>
+            <button onclick="resetToDefaultAnnualPresets()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition">
+              初期プリセットを復元
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      const sortedPresets = [...annualPresets].sort((a, b) => a.targetMonth - b.targetMonth);
+
+      sortedPresets.forEach(preset => {
+        const catStyle = CATEGORY_STYLES[preset.category] || CATEGORY_STYLES.other;
+        const taskCount = (preset.tasks || []).length;
+
+        const card = document.createElement('div');
+        card.className = 'bg-white p-4 rounded-xl border border-slate-200 hover:border-amber-300 hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-3';
+
+        card.innerHTML = `
+          <div class="flex items-start space-x-3 flex-1">
+            <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex flex-col items-center justify-center shrink-0 border border-amber-200">
+              <span class="text-[10px] font-semibold">例年</span>
+              <span class="text-sm font-bold leading-none">${preset.targetMonth}月</span>
+            </div>
+            <div class="space-y-1">
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${catStyle.bg} ${catStyle.text}">
+                  ${catStyle.name}
+                </span>
+                <span class="text-xs text-slate-500 font-medium">目安: ${preset.targetMonth}月${preset.defaultDay || 15}日頃</span>
+                <span class="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold">
+                  <i class="fa-solid fa-list-check text-amber-600 mr-1"></i>標準タスク${taskCount}件
+                </span>
+              </div>
+              <h4 class="font-bold text-sm text-slate-900">${preset.title}</h4>
+              <div class="flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                <span><i class="fa-solid fa-clock-rotate-left text-teal-600 mr-1"></i>投票: 本番の<strong>${preset.startOffset}</strong>日前〜<strong>${preset.endOffset}</strong>日前</span>
+                <span><i class="fa-solid fa-location-dot text-rose-500 mr-1"></i>${preset.location || '場所未定'}</span>
+              </div>
+              ${preset.notes ? `<p class="text-[11px] text-slate-600 italic bg-slate-50 p-1.5 rounded border border-slate-100 mt-1">${preset.notes}</p>` : ''}
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2 shrink-0 border-t md:border-t-0 pt-2 md:pt-0">
+            <button type="button" class="apply-single-preset-btn px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-lg border border-amber-300 text-xs transition flex items-center space-x-1" data-preset-id="${preset.id}">
+              <i class="fa-solid fa-calendar-plus text-amber-600"></i>
+              <span>今年度に登録</span>
+            </button>
+            <button type="button" class="edit-annual-btn p-1.5 text-slate-400 hover:text-amber-700 rounded-lg hover:bg-slate-100 transition" data-preset-id="${preset.id}" title="編集">
+              <i class="fa-solid fa-pen text-xs"></i>
+            </button>
+            <button type="button" class="delete-annual-btn p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition" data-preset-id="${preset.id}" title="削除">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        `;
+
+        card.querySelector('.apply-single-preset-btn').onclick = () => {
+          const targetYear = parseInt(document.getElementById('annualTargetYear').value, 10);
+          applyPresetToCalendar(preset, targetYear);
+        };
+
+        card.querySelector('.edit-annual-btn').onclick = () => {
+          openAnnualEditModal(preset);
+        };
+
+        card.querySelector('.delete-annual-btn').onclick = () => {
+          annualPresets = annualPresets.filter(p => p.id !== preset.id);
+          saveAnnualPresetsToStorage();
+          renderAnnualPresetsList();
+          showToast(`恒例行事「${preset.title}」を削除しました`);
+        };
+
+        container.appendChild(card);
+      });
+    }
+
+    function applyPresetToCalendar(preset, targetYear) {
+      const m = preset.targetMonth;
+      const d = Math.min(28, preset.defaultDay || 15);
+      const eventDate = new Date(targetYear, m - 1, d);
+      const eventDateStr = formatDateStr(eventDate);
+
+      const voteStartDate = formatDateStr(addDays(eventDate, -preset.startOffset));
+      const voteEndDate = formatDateStr(addDays(eventDate, -preset.endOffset));
+
+      // Calculate tasks with dates from offset
+      const calculatedTasks = (preset.tasks || []).map((t, idx) => {
+        const offset = (t.offset !== undefined) ? t.offset : 14;
+        const taskDueDate = formatDateStr(addDays(eventDate, -offset));
+        return {
+          id: 'tsk-' + Date.now() + '-' + idx,
+          title: t.title,
+          category: t.category || 'other',
+          dueDate: taskDueDate,
+          assignee: t.assignee || '',
+          completed: false
+        };
+      });
+
+      const newEvt = {
+        id: 'evt-preset-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+        title: preset.title,
+        eventDate: eventDateStr,
+        voteStartDate,
+        voteEndDate,
+        category: preset.category,
+        recurrence: 'none',
+        startOffset: preset.startOffset,
+        endOffset: preset.endOffset,
+        location: preset.location || '',
+        notes: preset.notes || '',
+        tasks: calculatedTasks
+      };
+
+      events.push(newEvt);
+      saveEventsToStorage();
+      renderCalendar();
+      renderEventList();
+      showToast(`${targetYear}年度に「${preset.title}」（タスク${calculatedTasks.length}件含）を登録しました！`);
+    }
+
+    /* Apply all annual presets */
+    document.getElementById('applyAllAnnualPresetsBtn').addEventListener('click', () => {
+      const targetYear = parseInt(document.getElementById('annualTargetYear').value, 10);
+      if (annualPresets.length === 0) {
+        showToast('恒例行事プリセットがありません', 'error');
+        return;
+      }
+
+      annualPresets.forEach(preset => {
+        const m = preset.targetMonth;
+        const d = Math.min(28, preset.defaultDay || 15);
+        const eventDate = new Date(targetYear, m - 1, d);
+        const eventDateStr = formatDateStr(eventDate);
+
+        const voteStartDate = formatDateStr(addDays(eventDate, -preset.startOffset));
+        const voteEndDate = formatDateStr(addDays(eventDate, -preset.endOffset));
+
+        const calculatedTasks = (preset.tasks || []).map((t, idx) => {
+          const offset = (t.offset !== undefined) ? t.offset : 14;
+          return {
+            id: 'tsk-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4) + '-' + idx,
+            title: t.title,
+            category: t.category || 'other',
+            dueDate: formatDateStr(addDays(eventDate, -offset)),
+            assignee: t.assignee || '',
+            completed: false
+          };
+        });
+
+        events.push({
+          id: 'evt-preset-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+          title: preset.title,
+          eventDate: eventDateStr,
+          voteStartDate,
+          voteEndDate,
+          category: preset.category,
+          recurrence: 'none',
+          startOffset: preset.startOffset,
+          endOffset: preset.endOffset,
+          location: preset.location || '',
+          notes: preset.notes || '',
+          tasks: calculatedTasks
+        });
+      });
+
+      saveEventsToStorage();
+      renderCalendar();
+      renderEventList();
+      document.getElementById('annualModal').classList.add('hidden');
+      showToast(`${targetYear}年度に${annualPresets.length}件の恒例イベント＆タスクを一括反映しました！`);
+    });
+
+    function openAnnualEditModal(preset = null) {
+      const titleEl = document.getElementById('annualEditModalTitle');
+      const form = document.getElementById('annualEditForm');
+      form.reset();
+
+      if (preset) {
+        titleEl.innerHTML = '<i class="fa-solid fa-pen mr-2 text-amber-400"></i>恒例イベントの編集';
+        document.getElementById('annualEditId').value = preset.id;
+        document.getElementById('annualEditTitle').value = preset.title;
+        document.getElementById('annualEditMonth').value = preset.targetMonth;
+        document.getElementById('annualEditDay').value = preset.defaultDay || 15;
+        document.getElementById('annualEditCategory').value = preset.category;
+        document.getElementById('annualEditStartOffset').value = preset.startOffset;
+        document.getElementById('annualEditEndOffset').value = preset.endOffset;
+        document.getElementById('annualEditLocation').value = preset.location || '';
+        document.getElementById('annualEditNotes').value = preset.notes || '';
+      } else {
+        titleEl.innerHTML = '<i class="fa-solid fa-plus mr-2 text-amber-400"></i>新しい恒例イベントの作成';
+        document.getElementById('annualEditId').value = '';
+        document.getElementById('annualEditTitle').value = '';
+        document.getElementById('annualEditMonth').value = '4';
+        document.getElementById('annualEditDay').value = '15';
+        document.getElementById('annualEditCategory').value = 'party';
+        document.getElementById('annualEditStartOffset').value = '21';
+        document.getElementById('annualEditEndOffset').value = '7';
+        document.getElementById('annualEditLocation').value = '';
+        document.getElementById('annualEditNotes').value = '';
+      }
+
+      document.getElementById('annualEditModal').classList.remove('hidden');
+    }
+
+    document.getElementById('annualEditForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('annualEditId').value;
+      const title = document.getElementById('annualEditTitle').value.trim();
+      const targetMonth = parseInt(document.getElementById('annualEditMonth').value, 10);
+      const defaultDay = parseInt(document.getElementById('annualEditDay').value, 10) || 15;
+      const category = document.getElementById('annualEditCategory').value;
+      const startOffset = parseInt(document.getElementById('annualEditStartOffset').value, 10) || 30;
+      const endOffset = parseInt(document.getElementById('annualEditEndOffset').value, 10) || 14;
+      const location = document.getElementById('annualEditLocation').value.trim();
+      const notes = document.getElementById('annualEditNotes').value.trim();
+
+      if (startOffset <= endOffset) {
+        showToast('投票開始（日前）は締切（日前）より大きい日数にしてください', 'error');
+        return;
+      }
+
+      if (id) {
+        const item = annualPresets.find(p => p.id === id);
+        if (item) {
+          item.title = title;
+          item.targetMonth = targetMonth;
+          item.defaultDay = defaultDay;
+          item.category = category;
+          item.startOffset = startOffset;
+          item.endOffset = endOffset;
+          item.location = location;
+          item.notes = notes;
+          showToast('恒例行事プリセットを更新しました');
+        }
+      } else {
+        annualPresets.push({
+          id: 'annual-' + Date.now(),
+          title,
+          targetMonth,
+          defaultDay,
+          category,
+          startOffset,
+          endOffset,
+          location,
+          notes,
+          tasks: []
+        });
+        showToast('新しい恒例行事プリセットを追加しました');
+      }
+
+      saveAnnualPresetsToStorage();
+      renderAnnualPresetsList();
+      document.getElementById('annualEditModal').classList.add('hidden');
+    });
+
+    function resetToDefaultAnnualPresets() {
+      annualPresets = JSON.parse(JSON.stringify(DEFAULT_ANNUAL_PRESETS));
+      saveAnnualPresetsToStorage();
+      renderAnnualPresetsList();
+      showToast('恒例行事を初期プリセットに戻しました');
+    }
+
+    document.getElementById('resetAnnualPresetsBtn').addEventListener('click', resetToDefaultAnnualPresets);
+    document.getElementById('openNewAnnualItemBtn').addEventListener('click', () => openAnnualEditModal(null));
+    document.getElementById('closeAnnualEditModalBtn').addEventListener('click', () => document.getElementById('annualEditModal').classList.add('hidden'));
+    document.getElementById('cancelAnnualEditBtn').addEventListener('click', () => document.getElementById('annualEditModal').classList.add('hidden'));
+
+    /* ========================================================= */
+    /* 3. Event Modal Task Builder & Interactive Checklists      */
+    /* ========================================================= */
+
+    function renderModalTasksList() {
+      const container = document.getElementById('modalTasksListContainer');
+      container.innerHTML = '';
+
+      if (currentModalTasks.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-4 bg-white/70 rounded-lg border border-dashed border-amber-200 text-slate-400 text-xs">
+            登録された準備タスクはありません。「タスクを1件追加」または右上のテンプレ（合宿・学祭・飲み会）から作成してください。
+          </div>
+        `;
+        return;
+      }
+
+      currentModalTasks.forEach((task, index) => {
+        const row = document.createElement('div');
+        row.className = 'bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center gap-2 text-xs transition';
+
+        row.innerHTML = `
+          <div class="flex items-center space-x-2 flex-1">
+            <select class="task-category-select text-[11px] font-bold px-2 py-1 rounded-lg border border-slate-300 bg-slate-50 focus:ring-1 focus:ring-teal-500 outline-none">
+              <option value="announce" ${task.category === 'announce' ? 'selected' : ''}>📢 告知</option>
+              <option value="place" ${task.category === 'place' ? 'selected' : ''}>📍 場所決め</option>
+              <option value="money" ${task.category === 'money' ? 'selected' : ''}>💰 お金・集金・支払</option>
+              <option value="prep" ${task.category === 'prep' ? 'selected' : ''}>📦 準備・買い出し</option>
+              <option value="other" ${task.category === 'other' ? 'selected' : ''}>📝 その他</option>
+            </select>
+            
+            <input type="text" class="task-title-input flex-1 px-2.5 py-1 rounded-lg border border-slate-300 font-semibold focus:ring-1 focus:ring-teal-500 outline-none text-xs" placeholder="タスク名 (例: 参加費集金、宿振込)" value="${task.title || ''}">
+          </div>
+
+          <div class="flex items-center space-x-2 shrink-0">
+            <div class="flex items-center space-x-1">
+              <label class="text-[10px] text-slate-500">期日:</label>
+              <input type="date" class="task-date-input px-2 py-1 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-teal-500 outline-none" value="${task.dueDate || ''}">
+            </div>
+
+            <input type="text" class="task-assignee-input w-20 px-2 py-1 rounded-lg border border-slate-300 text-[11px] placeholder-slate-400 outline-none" placeholder="担当 (会計等)" value="${task.assignee || ''}">
+
+            <button type="button" class="remove-task-row-btn p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition" title="このタスクを削除">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        `;
+
+        // Bind Row Inputs
+        const catSelect = row.querySelector('.task-category-select');
+        const titleInput = row.querySelector('.task-title-input');
+        const dateInput = row.querySelector('.task-date-input');
+        const assigneeInput = row.querySelector('.task-assignee-input');
+        const removeBtn = row.querySelector('.remove-task-row-btn');
+
+        catSelect.onchange = () => { task.category = catSelect.value; };
+        titleInput.oninput = () => { task.title = titleInput.value; };
+        dateInput.onchange = () => { task.dueDate = dateInput.value; };
+        assigneeInput.oninput = () => { task.assignee = assigneeInput.value; };
+
+        removeBtn.onclick = () => {
+          currentModalTasks.splice(index, 1);
+          renderModalTasksList();
+        };
+
+        container.appendChild(row);
+      });
+    }
+
+    // Add new blank task row
+    document.getElementById('addNewTaskRowBtn').addEventListener('click', () => {
+      const eDateVal = document.getElementById('eventDate').value;
+      const defaultDueDate = eDateVal ? formatDateStr(addDays(parseDateStr(eDateVal), -7)) : formatDateStr(simulatedToday);
+
+      currentModalTasks.push({
+        id: 'tsk-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+        title: '',
+        category: 'money',
+        dueDate: defaultDueDate,
+        assignee: '会計',
+        completed: false
+      });
+      renderModalTasksList();
+    });
+
+    // Template Insertions
+    function applyTasksTemplate(type) {
+      const tmpl = QUICK_TASK_TEMPLATES[type];
+      if (!tmpl) return;
+
+      const eDateVal = document.getElementById('eventDate').value || formatDateStr(addDays(simulatedToday, 30));
+      const eDate = parseDateStr(eDateVal);
+
+      tmpl.forEach((item, idx) => {
+        const dueDate = formatDateStr(addDays(eDate, -item.offsetDays));
+        currentModalTasks.push({
+          id: 'tsk-' + Date.now() + '-' + idx,
+          title: item.title,
+          category: item.category,
+          dueDate: dueDate,
+          assignee: item.assignee,
+          completed: false
+        });
+      });
+
+      renderModalTasksList();
+      showToast(`「${type === 'camp' ? '合宿' : type === 'festival' ? '学祭' : '飲み会'}」の定番タスクを一括セットしました！`);
+    }
+
+    document.getElementById('applyCampTasksTemplateBtn').addEventListener('click', () => applyTasksTemplate('camp'));
+    document.getElementById('applyFestTasksTemplateBtn').addEventListener('click', () => applyTasksTemplate('festival'));
+    document.getElementById('applyPartyTasksTemplateBtn').addEventListener('click', () => applyTasksTemplate('party'));
+
+    /* ========================================================= */
+    /* UI Navigation & Modal Handlers                            */
+    /* ========================================================= */
+
+    document.getElementById('openSheetModalBtn').addEventListener('click', () => {
+      renderSheetTable();
+      document.getElementById('sheetModal').classList.remove('hidden');
+    });
+    document.getElementById('quickOpenSheetBtn').addEventListener('click', () => {
+      renderSheetTable();
+      document.getElementById('sheetModal').classList.remove('hidden');
+    });
+    document.getElementById('closeSheetModalBtn').addEventListener('click', () => document.getElementById('sheetModal').classList.add('hidden'));
+    document.getElementById('closeSheetModalBtn2').addEventListener('click', () => document.getElementById('sheetModal').classList.add('hidden'));
+
+    document.getElementById('openAnnualModalBtn').addEventListener('click', () => {
+      populateAnnualTargetYearSelect();
+      renderAnnualPresetsList();
+      document.getElementById('annualModal').classList.remove('hidden');
+    });
+    document.getElementById('quickAnnualBtn').addEventListener('click', () => {
+      populateAnnualTargetYearSelect();
+      renderAnnualPresetsList();
+      document.getElementById('annualModal').classList.remove('hidden');
+    });
+    document.getElementById('closeAnnualModalBtn').addEventListener('click', () => document.getElementById('annualModal').classList.add('hidden'));
+    document.getElementById('closeAnnualModalBtn2').addEventListener('click', () => document.getElementById('annualModal').classList.add('hidden'));
+
+    /* Bi-directional synchronizer for Event Modal */
+    function syncDatesFromOffsets() {
+      const eventDateStr = document.getElementById('eventDate').value;
+      if (!eventDateStr) return;
+
+      const eDate = parseDateStr(eventDateStr);
+      const startOffset = parseInt(document.getElementById('startOffsetSlider').value, 10);
+      const endOffset = parseInt(document.getElementById('endOffsetSlider').value, 10);
+
+      const startDate = addDays(eDate, -startOffset);
+      const endDate = addDays(eDate, -endOffset);
+
+      document.getElementById('voteStartDateInput').value = formatDateStr(startDate);
+      document.getElementById('voteEndDateInput').value = formatDateStr(endDate);
+
+      updateOffsetLabelsAndValidation();
+    }
+
+    function syncOffsetsFromDates() {
+      const eventDateStr = document.getElementById('eventDate').value;
+      const sDateStr = document.getElementById('voteStartDateInput').value;
+      const eDateStr = document.getElementById('voteEndDateInput').value;
+
+      if (!eventDateStr || !sDateStr || !eDateStr) return;
+
+      const eDate = parseDateStr(eventDateStr);
+      const startDate = parseDateStr(sDateStr);
+      const endDate = parseDateStr(eDateStr);
+
+      const calculatedStartOffset = diffInDays(startDate, eDate);
+      const calculatedEndOffset = diffInDays(endDate, eDate);
+
+      const clampedStart = Math.min(90, Math.max(2, calculatedStartOffset));
+      const clampedEnd = Math.min(60, Math.max(1, calculatedEndOffset));
+
+      document.getElementById('startOffsetSlider').value = clampedStart;
+      document.getElementById('endOffsetSlider').value = clampedEnd;
+
+      updateOffsetLabelsAndValidation(calculatedStartOffset, calculatedEndOffset);
+    }
+
+    function updateOffsetLabelsAndValidation(customStartOffset = null, customEndOffset = null) {
+      const eventDateStr = document.getElementById('eventDate').value;
+      const sDateStr = document.getElementById('voteStartDateInput').value;
+      const eDateStr = document.getElementById('voteEndDateInput').value;
+
+      const alertBox = document.getElementById('dateValidationAlert');
+      const alertText = document.getElementById('dateValidationText');
+
+      if (!eventDateStr || !sDateStr || !eDateStr) return;
+
+      const eDate = parseDateStr(eventDateStr);
+      const sDate = parseDateStr(sDateStr);
+      const endDate = parseDateStr(eDateStr);
+
+      const startOffset = customStartOffset !== null ? customStartOffset : diffInDays(sDate, eDate);
+      const endOffset = customEndOffset !== null ? customEndOffset : diffInDays(endDate, eDate);
+
+      document.getElementById('startOffsetLabel').textContent = startOffset;
+      document.getElementById('endOffsetLabel').textContent = endOffset;
+      document.getElementById('startOffsetBadge').textContent = `本番の${startOffset}日前`;
+      document.getElementById('endOffsetBadge').textContent = `本番の${endOffset}日前`;
+
+      const prepDays = diffInDays(endDate, eDate);
+      document.getElementById('calculatedPrepSummary').textContent = `締切から本番まで: ${prepDays}日間`;
+
+      if (sDate.getTime() > endDate.getTime()) {
+        alertBox.classList.remove('hidden');
+        alertText.textContent = '投票開始日は締切日より前の日付にしてください。';
+      } else if (endDate.getTime() > eDate.getTime()) {
+        alertBox.classList.remove('hidden');
+        alertText.textContent = '投票締切日は本番当日以前の日付にしてください。';
+      } else {
+        alertBox.classList.add('hidden');
+      }
+    }
+
+    /* Event Form Handlers */
+    document.getElementById('voteStartDateInput').addEventListener('change', syncOffsetsFromDates);
+    document.getElementById('voteEndDateInput').addEventListener('change', syncOffsetsFromDates);
+
+    document.getElementById('eventDate').addEventListener('change', () => {
+      updateRecurrenceOptionsLabel();
+      syncDatesFromOffsets();
+    });
+
+    document.getElementById('startOffsetSlider').addEventListener('input', () => {
+      const start = parseInt(document.getElementById('startOffsetSlider').value, 10);
+      const end = parseInt(document.getElementById('endOffsetSlider').value, 10);
+      if (start <= end) {
+        document.getElementById('endOffsetSlider').value = Math.max(1, start - 1);
+      }
+      syncDatesFromOffsets();
+    });
+
+    document.getElementById('endOffsetSlider').addEventListener('input', () => {
+      const start = parseInt(document.getElementById('startOffsetSlider').value, 10);
+      const end = parseInt(document.getElementById('endOffsetSlider').value, 10);
+      if (end >= start) {
+        document.getElementById('startOffsetSlider').value = end + 1;
+      }
+      syncDatesFromOffsets();
+    });
+
+    // Preset Buttons in Event Form
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const presetKey = e.currentTarget.getAttribute('data-preset');
+        const p = PRESETS[presetKey];
+        if (p) {
+          document.getElementById('startOffsetSlider').value = p.startOffset;
+          document.getElementById('endOffsetSlider').value = p.endOffset;
+          document.getElementById('eventCategory').value = presetKey;
+          syncDatesFromOffsets();
+          showToast(`プリセット「${p.name}」を適用しました`);
+        }
+      });
+    });
+
+    function updateRecurrenceOptionsLabel() {
+      const dateVal = document.getElementById('eventDate').value;
+      const recSelect = document.getElementById('eventRecurrence');
+      const settingsBox = document.getElementById('recurrenceSettingsContainer');
+      const countBox = document.getElementById('recurrenceCountBox');
+      const untilBox = document.getElementById('recurrenceUntilBox');
+      const isCount = document.getElementById('recEndTypeCount').checked;
+
+      if (dateVal) {
+        const d = parseDateStr(dateVal);
+        const dayName = getDayOfWeekName(d);
+        document.getElementById('optWeekly').textContent = `毎週 ${dayName}`;
+        document.getElementById('optBiweekly').textContent = `隔週 ${dayName} (2週ごと)`;
+        document.getElementById('optMonthly').textContent = `毎月 ${d.getDate()}日`;
+      }
+
+      if (recSelect.value !== 'none') {
+        settingsBox.classList.remove('hidden');
+        if (isCount) {
+          countBox.classList.remove('hidden');
+          untilBox.classList.add('hidden');
+        } else {
+          countBox.classList.add('hidden');
+          untilBox.classList.remove('hidden');
+          const untilInput = document.getElementById('eventRecurrenceUntil');
+          if (!untilInput.value && dateVal) {
+            const defaultUntil = addDays(parseDateStr(dateVal), 90);
+            untilInput.value = formatDateStr(defaultUntil);
+          }
+        }
+      } else {
+        settingsBox.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('eventRecurrence').addEventListener('change', updateRecurrenceOptionsLabel);
+    document.getElementById('recEndTypeCount').addEventListener('change', updateRecurrenceOptionsLabel);
+    document.getElementById('recEndTypeUntil').addEventListener('change', updateRecurrenceOptionsLabel);
+
+    function openNewEventModal(prefilledDateStr = null) {
+      document.getElementById('eventId').value = '';
+      document.getElementById('modalTitle').innerHTML = '<i class="fa-regular fa-calendar-plus mr-2 text-teal-200"></i>新しいサークル予定を追加';
+      document.getElementById('eventTitle').value = '';
+      
+      const defaultDate = prefilledDateStr || formatDateStr(addDays(simulatedToday, 30));
+      document.getElementById('eventDate').value = defaultDate;
+      document.getElementById('eventCategory').value = 'festival';
+      
+      document.getElementById('eventRecurrence').value = 'none';
+      document.getElementById('recEndTypeCount').checked = true;
+      document.getElementById('eventRecurrenceCount').value = '10';
+      document.getElementById('eventRecurrenceUntil').value = '';
+      updateRecurrenceOptionsLabel();
+
+      document.getElementById('startOffsetSlider').value = 30;
+      document.getElementById('endOffsetSlider').value = 14;
+      document.getElementById('eventLocation').value = '';
+      document.getElementById('eventNotes').value = '';
+      document.getElementById('deleteEventBtn').classList.add('hidden');
+
+      // Default tasks for a new event
+      currentModalTasks = [
+        { id: 't-init-1', title: '出欠投票の告知＆周知', category: 'announce', dueDate: formatDateStr(addDays(parseDateStr(defaultDate), -30)), assignee: '広報', completed: false },
+        { id: 't-init-2', title: '場所・会場の確定と予約', category: 'place', dueDate: formatDateStr(addDays(parseDateStr(defaultDate), -20)), assignee: '担当係', completed: false },
+        { id: 't-init-3', title: '予算・参加費の金額決定', category: 'money', dueDate: formatDateStr(addDays(parseDateStr(defaultDate), -15)), assignee: '会計', completed: false },
+        { id: 't-init-4', title: '参加費の集金締切', category: 'money', dueDate: formatDateStr(addDays(parseDateStr(defaultDate), -7)), assignee: '会計', completed: false },
+        { id: 't-init-5', title: '施設・業者への支払い', category: 'money', dueDate: defaultDate, assignee: '会計', completed: false }
+      ];
+      renderModalTasksList();
+
+      syncDatesFromOffsets();
+      document.getElementById('eventModal').classList.remove('hidden');
+    }
+
+    function openEditModal(evtId) {
+      const evt = events.find(e => e.id === evtId);
+      if (!evt) return;
+
+      document.getElementById('eventId').value = evt.id;
+      document.getElementById('modalTitle').innerHTML = '<i class="fa-regular fa-pen-to-square mr-2 text-teal-200"></i>予定とタスクの編集';
+      document.getElementById('eventTitle').value = evt.title;
+      document.getElementById('eventDate').value = evt.eventDate;
+      document.getElementById('eventCategory').value = evt.category;
+      
+      document.getElementById('eventRecurrence').value = evt.recurrence || 'none';
+      const isCount = (evt.recurrenceEndType !== 'until');
+      document.getElementById('recEndTypeCount').checked = isCount;
+      document.getElementById('recEndTypeUntil').checked = !isCount;
+      document.getElementById('eventRecurrenceCount').value = evt.recurrenceCount || 10;
+      document.getElementById('eventRecurrenceUntil').value = evt.recurrenceUntil || '';
+      updateRecurrenceOptionsLabel();
+
+      if (evt.voteStartDate && evt.voteEndDate) {
+        document.getElementById('voteStartDateInput').value = evt.voteStartDate;
+        document.getElementById('voteEndDateInput').value = evt.voteEndDate;
+        syncOffsetsFromDates();
+      } else {
+        document.getElementById('startOffsetSlider').value = evt.startOffset || 30;
+        document.getElementById('endOffsetSlider').value = evt.endOffset || 14;
+        syncDatesFromOffsets();
+      }
+
+      document.getElementById('eventLocation').value = evt.location || '';
+      document.getElementById('eventNotes').value = evt.notes || '';
+      document.getElementById('deleteEventBtn').classList.remove('hidden');
+
+      // Clone existing tasks into modal editing buffer
+      currentModalTasks = JSON.parse(JSON.stringify(evt.tasks || []));
+      renderModalTasksList();
+
+      document.getElementById('detailModal').classList.add('hidden');
+      document.getElementById('eventModal').classList.remove('hidden');
+    }
+
+    let currentDetailEvt = null;
+
+    function renderDetailTasksInteractive() {
+      if (!currentDetailEvt) return;
+      const container = document.getElementById('detailTasksInteractiveContainer');
+      const progressBar = document.getElementById('detailTasksProgressBar');
+      const progressBadge = document.getElementById('detailTasksProgressBadge');
+      container.innerHTML = '';
+
+      const tasks = currentDetailEvt.tasks || [];
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.completed).length;
+      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      progressBar.style.width = `${percent}%`;
+      progressBadge.textContent = `${completed} / ${total} 完了 (${percent}%)`;
+      if (completed === total && total > 0) {
+        progressBadge.className = 'text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full';
+      } else {
+        progressBadge.className = 'text-[11px] font-bold bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-full';
+      }
+
+      if (tasks.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-3 text-slate-400 text-xs italic">
+            タスクは未登録です。下の入力欄から追加できます。
+          </div>
+        `;
+        return;
+      }
+
+      tasks.forEach((task, index) => {
+        const cat = TASK_CATEGORIES[task.category] || TASK_CATEGORIES.other;
+        const isPastDue = task.dueDate && !task.completed && (task.dueDate < formatDateStr(simulatedToday));
+        const isTodayDue = task.dueDate && !task.completed && (task.dueDate === formatDateStr(simulatedToday));
+
+        const item = document.createElement('div');
+        item.className = `p-2 rounded-lg border transition flex items-center justify-between gap-2 ${
+          task.completed ? 'bg-slate-50 border-slate-200 opacity-60' : (isPastDue ? 'bg-rose-50 border-rose-200' : 'bg-white border-amber-200/80')
+        }`;
+
+        item.innerHTML = `
+          <label class="flex items-center space-x-2 flex-1 cursor-pointer">
+            <input type="checkbox" class="task-checkbox rounded text-teal-600 focus:ring-teal-500 w-4 h-4 cursor-pointer" ${task.completed ? 'checked' : ''}>
+            <span class="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded ${cat.bg} ${cat.text}">
+              <i class="fa-solid ${cat.icon} mr-1"></i>${cat.name}
+            </span>
+            <span class="text-xs font-semibold ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}">
+              ${task.title}
+            </span>
+            ${task.assignee ? `<span class="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded font-normal">(${task.assignee})</span>` : ''}
+          </label>
+
+          <div class="flex items-center space-x-2 shrink-0 text-[11px]">
+            ${task.dueDate ? `
+              <span class="font-mono font-medium ${isPastDue ? 'text-rose-600 font-bold' : (isTodayDue ? 'text-amber-600 font-bold' : 'text-slate-500')}">
+                ${isPastDue ? '⚠️遅延 ' : (isTodayDue ? '本日締切 ' : '')}期日: ${task.dueDate}
+              </span>` : '<span class="text-slate-400">期日なし</span>'}
+
+            <button type="button" class="delete-task-in-detail-btn text-slate-300 hover:text-rose-500 p-1" title="削除">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        `;
+
+        // Checkbox Toggle
+        const chk = item.querySelector('.task-checkbox');
+        chk.onchange = () => {
+          task.completed = chk.checked;
+          syncTaskChangeToMasterEvent(currentDetailEvt);
+          renderDetailTasksInteractive();
+          renderCalendar();
+          renderEventList();
+          showToast(`タスク「${task.title}」を${task.completed ? '完了' : '未完了'}にしました`);
+        };
+
+        // Delete single task
+        item.querySelector('.delete-task-in-detail-btn').onclick = () => {
+          currentDetailEvt.tasks.splice(index, 1);
+          syncTaskChangeToMasterEvent(currentDetailEvt);
+          renderDetailTasksInteractive();
+          renderCalendar();
+          renderEventList();
+          showToast(`タスクを削除しました`);
+        };
+
+        container.appendChild(item);
+      });
+    }
+
+    function syncTaskChangeToMasterEvent(targetEvt) {
+      const parentId = targetEvt.originalEventId || targetEvt.id;
+      const master = events.find(e => e.id === parentId);
+      if (master) {
+        master.tasks = targetEvt.tasks;
+        saveEventsToStorage();
+      }
+    }
+
+    // Quick add task inside Detail Modal
+    document.getElementById('quickAddDetailTaskBtn').addEventListener('click', () => {
+      const input = document.getElementById('quickDetailTaskInput');
+      const val = input.value.trim();
+      if (!val || !currentDetailEvt) return;
+
+      currentDetailEvt.tasks = currentDetailEvt.tasks || [];
+      const newTask = {
+        id: 'tsk-' + Date.now(),
+        title: val,
+        category: val.includes('集金') || val.includes('支払') || val.includes('費') ? 'money' : (val.includes('場所') || val.includes('店') || val.includes('宿') ? 'place' : 'other'),
+        dueDate: currentDetailEvt.eventDate,
+        assignee: '担当',
+        completed: false
+      };
+      currentDetailEvt.tasks.push(newTask);
+      syncTaskChangeToMasterEvent(currentDetailEvt);
+      input.value = '';
+      renderDetailTasksInteractive();
+      renderCalendar();
+      renderEventList();
+      showToast(`タスク「${val}」を追加しました`);
+    });
+
+    function openDetailModal(evt) {
+      if (!evt) return;
+      currentDetailEvt = evt;
+
+      const timeline = getEventTimeline(evt);
+      const status = getEventStatus(evt);
+
+      document.getElementById('detailTitle').textContent = evt.title;
+      document.getElementById('detailBadge').className = `text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${status.badgeClass}`;
+      document.getElementById('detailBadge').textContent = status.label;
+
+      document.getElementById('detailEventDate').textContent = `${evt.eventDate} (本番)`;
+      document.getElementById('detailVotePeriod').textContent = `${timeline.startDateStr} 〜 ${timeline.endDateStr}`;
+      document.getElementById('detailLocation').textContent = evt.location || '未設定';
+      document.getElementById('detailPrepDays').textContent = `締切から本番まで ${timeline.prepDays} 日間`;
+      document.getElementById('detailNotes').textContent = evt.notes || '備考はありません。';
+
+      const recBadgeBox = document.getElementById('detailRecurrenceBadgeContainer');
+      const recText = document.getElementById('detailRecurrenceText');
+      if (evt.recurrence && evt.recurrence !== 'none') {
+        recBadgeBox.classList.remove('hidden');
+        const d = parseDateStr(evt.eventDate);
+        const dayName = getDayOfWeekName(d);
+        let recLabel = '';
+        if (evt.recurrence === 'weekly') recLabel = `毎週 ${dayName}`;
+        if (evt.recurrence === 'biweekly') recLabel = `隔週 ${dayName}`;
+        if (evt.recurrence === 'monthly') recLabel = `毎月 ${d.getDate()}日`;
+
+        if (evt.recurrenceEndType === 'until' && evt.recurrenceUntil) {
+          recLabel += ` (${evt.recurrenceUntil}まで)`;
+        } else if (evt.recurrenceCount) {
+          recLabel += ` (全${evt.recurrenceCount}回)`;
+        }
+        recText.textContent = recLabel;
+      } else {
+        recBadgeBox.classList.add('hidden');
+      }
+
+      // Render Tasks checklist inside detail
+      renderDetailTasksInteractive();
+
+      const templateText = generateNotificationText(evt, timeline, status);
+      document.getElementById('templateNotificationText').value = templateText;
+
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function generateNotificationText(evt, timeline, status) {
+      const today = simulatedToday;
+      const endDate = timeline.voteEndDate;
+      const diffDays = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+      let deadlineNotice = `締切：${timeline.endDateStr} 23:59`;
+      if (diffDays > 0) {
+        deadlineNotice += `（あと${diffDays}日！）`;
+      } else if (diffDays === 0) {
+        deadlineNotice += `（本日締切！！）`;
+      } else {
+        deadlineNotice += `（締切済）`;
+      }
+
+      // Format pending critical tasks (money, booking, announcements)
+      const tasks = evt.tasks || [];
+      const pendingMoney = tasks.filter(t => t.category === 'money' && !t.completed);
+      let taskAnnouncement = '';
+      if (pendingMoney.length > 0) {
+        taskAnnouncement = `\n💰【集金・お支払いのご案内】\n` +
+          pendingMoney.map(t => `・${t.title} (期日: ${t.dueDate || '随時'}) [担当: ${t.assignee || '会計'}]`).join('\n') + `\n`;
+      }
+
+      return `📢【サークル日程＆出欠確認のお知らせ】\n` +
+             `━━━━━━━━━━━━━━━━━━\n` +
+             `■ イベント：${evt.title}\n` +
+             `■ 本番日程：${evt.eventDate}\n` +
+             `■ 投票期間：${timeline.startDateStr} 〜 ${timeline.endDateStr}\n` +
+             `■ 会場・場所：${evt.location || '未定'}\n` +
+             `━━━━━━━━━━━━━━━━━━\n` +
+             `予約や準備シフトの確定のため、期日までに投票のご協力をお願いします！\n\n` +
+             `🕒 ${deadlineNotice}\n` +
+             `${taskAnnouncement}` +
+             `📝 備考：${evt.notes || 'よろしくお願いいたします。'}\n` +
+             `━━━━━━━━━━━━━━━━━━`;
+    }
+
+    document.getElementById('eventForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('eventId').value;
+      const title = document.getElementById('eventTitle').value.trim();
+      const eventDate = document.getElementById('eventDate').value;
+      const voteStartDate = document.getElementById('voteStartDateInput').value;
+      const voteEndDate = document.getElementById('voteEndDateInput').value;
+      const category = document.getElementById('eventCategory').value;
+      const recurrence = document.getElementById('eventRecurrence').value;
+      const recurrenceEndType = document.getElementById('recEndTypeCount').checked ? 'count' : 'until';
+      const recurrenceCount = parseInt(document.getElementById('eventRecurrenceCount').value, 10) || 10;
+      const recurrenceUntil = document.getElementById('eventRecurrenceUntil').value;
+      const location = document.getElementById('eventLocation').value.trim();
+      const notes = document.getElementById('eventNotes').value.trim();
+
+      const eDate = parseDateStr(eventDate);
+      const sDate = parseDateStr(voteStartDate);
+      const enDate = parseDateStr(voteEndDate);
+
+      if (sDate.getTime() > enDate.getTime()) {
+        showToast('投票開始日は締切日より前に設定してください', 'error');
+        return;
+      }
+      if (enDate.getTime() > eDate.getTime()) {
+        showToast('投票締切日は本番日以前に設定してください', 'error');
+        return;
+      }
+
+      const startOffset = diffInDays(sDate, eDate);
+      const endOffset = diffInDays(enDate, eDate);
+
+      // Save tasks from buffer
+      const tasksToSave = currentModalTasks.filter(t => t.title && t.title.trim() !== '');
+
+      if (id) {
+        const evt = events.find(item => item.id === id);
+        if (evt) {
+          evt.title = title;
+          evt.eventDate = eventDate;
+          evt.voteStartDate = voteStartDate;
+          evt.voteEndDate = voteEndDate;
+          evt.category = category;
+          evt.recurrence = recurrence;
+          evt.recurrenceEndType = recurrenceEndType;
+          evt.recurrenceCount = recurrenceCount;
+          evt.recurrenceUntil = (recurrence !== 'none' && recurrenceEndType === 'until') ? recurrenceUntil : null;
+          evt.startOffset = startOffset;
+          evt.endOffset = endOffset;
+          evt.location = location;
+          evt.notes = notes;
+          evt.tasks = tasksToSave;
+          showToast('予定とタスクを更新しました！');
+        }
+      } else {
+        const newEvt = {
+          id: 'evt-' + Date.now(),
+          title,
+          eventDate,
+          voteStartDate,
+          voteEndDate,
+          category,
+          recurrence,
+          recurrenceEndType,
+          recurrenceCount,
+          recurrenceUntil: (recurrence !== 'none' && recurrenceEndType === 'until') ? recurrenceUntil : null,
+          deletedOccurrences: [],
+          startOffset,
+          endOffset,
+          location,
+          notes,
+          tasks: tasksToSave
+        };
+        events.push(newEvt);
+        showToast('新しい予定とタスクを追加しました！');
+      }
+
+      saveEventsToStorage();
+      document.getElementById('eventModal').classList.add('hidden');
+      renderCalendar();
+      renderEventList();
+    });
+
+    /* Deletion Logic with Recurring options */
+    let recurringActionContext = null;
+
+    function openRecurringActionModal(evt) {
+      recurringActionContext = evt;
+      const targetDate = evt.occurrenceDateStr || evt.eventDate;
+      document.getElementById('targetOccurrenceDateLabel').textContent = targetDate;
+      document.getElementById('recurringActionModal').classList.remove('hidden');
+    }
+
+    function deleteEventWorkflow(evt) {
+      if (!evt) return;
+
+      const isRecurring = evt.recurrence && evt.recurrence !== 'none';
+      if (isRecurring) {
+        openRecurringActionModal(evt);
+      } else {
+        events = events.filter(e => e.id !== evt.id);
+        saveEventsToStorage();
+        if (highlightedInstanceId === evt.id) highlightedInstanceId = null;
+        showToast('予定を削除しました');
+        document.getElementById('eventModal').classList.add('hidden');
+        document.getElementById('detailModal').classList.add('hidden');
+        renderCalendar();
+        renderEventList();
+      }
+    }
+
+    document.getElementById('deleteEventBtn').addEventListener('click', () => {
+      const id = document.getElementById('eventId').value;
+      const evt = events.find(e => e.id === id);
+      deleteEventWorkflow(evt);
+    });
+
+    document.getElementById('deleteFromDetailBtn').addEventListener('click', () => {
+      deleteEventWorkflow(currentDetailEvt);
+    });
+
+    document.getElementById('deleteOnlyThisBtn').addEventListener('click', () => {
+      if (!recurringActionContext) return;
+      const parentId = recurringActionContext.originalEventId || recurringActionContext.id;
+      const targetDateStr = recurringActionContext.occurrenceDateStr || recurringActionContext.eventDate;
+
+      const parentEvt = events.find(e => e.id === parentId);
+      if (parentEvt) {
+        parentEvt.deletedOccurrences = parentEvt.deletedOccurrences || [];
+        if (!parentEvt.deletedOccurrences.includes(targetDateStr)) {
+          parentEvt.deletedOccurrences.push(targetDateStr);
+        }
+        saveEventsToStorage();
+        showToast(`${targetDateStr} の予定のみを削除しました`);
+      }
+
+      document.getElementById('recurringActionModal').classList.add('hidden');
+      document.getElementById('detailModal').classList.add('hidden');
+      document.getElementById('eventModal').classList.add('hidden');
+      renderCalendar();
+      renderEventList();
+    });
+
+    document.getElementById('deleteThisAndFollowingBtn').addEventListener('click', () => {
+      if (!recurringActionContext) return;
+      const parentId = recurringActionContext.originalEventId || recurringActionContext.id;
+      const targetDateStr = recurringActionContext.occurrenceDateStr || recurringActionContext.eventDate;
+
+      const parentEvt = events.find(e => e.id === parentId);
+      if (parentEvt) {
+        if (targetDateStr === parentEvt.eventDate) {
+          events = events.filter(e => e.id !== parentId);
+          showToast('定期スケジュール全体を削除しました');
+        } else {
+          const prevDay = formatDateStr(addDays(parseDateStr(targetDateStr), -1));
+          parentEvt.recurrenceEndType = 'until';
+          parentEvt.recurrenceUntil = prevDay;
+          showToast(`${targetDateStr} 以降の予定を削除しました`);
+        }
+        saveEventsToStorage();
+      }
+
+      document.getElementById('recurringActionModal').classList.add('hidden');
+      document.getElementById('detailModal').classList.add('hidden');
+      document.getElementById('eventModal').classList.add('hidden');
+      renderCalendar();
+      renderEventList();
+    });
+
+    document.getElementById('deleteAllOccurrencesBtn').addEventListener('click', () => {
+      if (!recurringActionContext) return;
+      const parentId = recurringActionContext.originalEventId || recurringActionContext.id;
+      events = events.filter(e => e.id !== parentId);
+      saveEventsToStorage();
+      showToast('定期スケジュール全体を削除しました');
+
+      document.getElementById('recurringActionModal').classList.add('hidden');
+      document.getElementById('detailModal').classList.add('hidden');
+      document.getElementById('eventModal').classList.add('hidden');
+      renderCalendar();
+      renderEventList();
+    });
+
+    document.getElementById('cancelRecurringActionBtn').addEventListener('click', () => {
+      document.getElementById('recurringActionModal').classList.add('hidden');
+    });
+
+    document.getElementById('copyTemplateTextBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('templateNotificationText');
+      textarea.select();
+      document.execCommand('copy');
+      showToast('告知文をコピーしました！LINEやDiscordに貼り付けられます');
+    });
+
+    /* Dedicated Print Window */
+    function printInDedicatedWindow() {
+      const year = currentViewingMonth.getFullYear();
+      const month = currentViewingMonth.getMonth();
+      const monthLabel = `${year}年 ${month + 1}月`;
+
+      const viewStart = new Date(year, month, 1);
+      const viewEnd = new Date(year, month + 1, 0);
+      const monthEvents = getExpandedOccurrences(viewStart, viewEnd).sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+
+      const printWindow = window.open('', '_blank', 'width=1100,height=850');
+      if (!printWindow) {
+        showToast('ポップアップがブロックされました', 'error');
+        return;
+      }
+
+      const calendarDOM = document.getElementById('calendarWeeksContainer').innerHTML;
+
+      const printHTML = `
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+          <meta charset="UTF-8">
+          <title>${monthLabel} サークル日程・タスク＆投票期間カレンダー</title>
+          <script src="https://cdn.tailwindcss.com"><\/script>
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+          <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+          <style>
+            body { font-family: 'Noto Sans JP', sans-serif; background: #fff; color: #1e293b; }
+            @page { size: A4 landscape; margin: 8mm; }
+            @media print {
+              .no-print-btn { display: none !important; }
+              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+          </style>
+        </head>
+        <body class="p-6">
+          <div class="flex items-center justify-between pb-3 border-b-2 border-teal-600 mb-4">
+            <div>
+              <h1 class="text-2xl font-bold text-slate-900">${monthLabel} サークル予定・出欠投票＆タスク進捗</h1>
+              <p class="text-xs text-slate-500 mt-0.5">出力日時: ${formatJapaneseDate(new Date())} | CircleSync</p>
+            </div>
+            <div class="flex items-center space-x-2 no-print-btn">
+              <button onclick="window.print()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg shadow cursor-pointer">
+                <i class="fa-solid fa-print mr-1.5"></i>この内容を印刷・PDF保存
+              </button>
+              <button onclick="window.close()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg">
+                閉じる
+              </button>
+            </div>
+          </div>
+
+          <div class="border border-slate-300 rounded-xl overflow-hidden mb-6">
+            <div class="grid grid-cols-7 border-b border-slate-300 text-center text-xs font-bold py-2 bg-slate-100">
+              <span class="text-rose-600">日</span>
+              <span>月</span>
+              <span>火</span>
+              <span>水</span>
+              <span>木</span>
+              <span>金</span>
+              <span class="text-blue-600">土</span>
+            </div>
+            <div class="divide-y divide-slate-200 bg-white">
+              ${calendarDOM}
+            </div>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <h3 class="font-bold text-xs text-slate-800 mb-2 uppercase tracking-wide">
+              <i class="fa-solid fa-list-check text-teal-600 mr-1.5"></i>
+              当月のスケジュール・投票期間・主な残タスク一覧
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              ${monthEvents.map(evt => {
+                const tl = getEventTimeline(evt);
+                const ts = getEventTaskStats(evt);
+                return `
+                  <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div class="flex items-center justify-between mb-0.5">
+                        <span class="font-bold text-slate-900">${evt.title}</span>
+                        <span class="text-[10px] text-amber-800 font-bold">${ts.total > 0 ? `タスク: ${ts.completed}/${ts.total}` : ''}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-500">${evt.location ? '場所: ' + evt.location : ''}</div>
+                    </div>
+                    <div class="mt-2 pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                      <span class="text-teal-800 font-bold"><i class="fa-regular fa-clock mr-1 text-teal-600"></i>投票: ${tl.startDateStr} 〜 ${tl.endDateStr}</span>
+                      <span class="text-amber-800 font-bold"><i class="fa-solid fa-flag-checkered mr-1 text-amber-500"></i>本番: ${evt.eventDate}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() { window.print(); }, 400);
+            };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.open();
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+      document.getElementById('printModal').classList.add('hidden');
+    }
+
+    document.getElementById('openPrintModalBtn').addEventListener('click', () => document.getElementById('printModal').classList.remove('hidden'));
+    document.getElementById('closePrintModalBtn').addEventListener('click', () => document.getElementById('printModal').classList.add('hidden'));
+    document.getElementById('printDedicatedWindowBtn').addEventListener('click', printInDedicatedWindow);
+    document.getElementById('printStandardBtn').addEventListener('click', () => {
+      document.getElementById('printModal').classList.add('hidden');
+      window.print();
+    });
+
+    /* Month Navigation Controls */
+    document.getElementById('prevMonthBtn').addEventListener('click', () => {
+      currentViewingMonth.setMonth(currentViewingMonth.getMonth() - 1);
+      renderCalendar();
+    });
+    document.getElementById('nextMonthBtn').addEventListener('click', () => {
+      currentViewingMonth.setMonth(currentViewingMonth.getMonth() + 1);
+      renderCalendar();
+    });
+    document.getElementById('todayBtn').addEventListener('click', () => {
+      currentViewingMonth = new Date(simulatedToday.getFullYear(), simulatedToday.getMonth(), 1);
+      renderCalendar();
+    });
+
+    /* Simulation Date Controls */
+    const simDateInput = document.getElementById('simulatedDateInput');
+    simDateInput.value = formatDateStr(simulatedToday);
+    simDateInput.addEventListener('change', (e) => {
+      if (e.target.value) {
+        simulatedToday = parseDateStr(e.target.value);
+        currentViewingMonth = new Date(simulatedToday.getFullYear(), simulatedToday.getMonth(), 1);
+        renderCalendar();
+        renderEventList();
+        showToast(`シミュレーション基準日を ${e.target.value} に変更しました`);
+      }
+    });
+
+    document.getElementById('resetTodayBtn').addEventListener('click', () => {
+      const now = new Date();
+      simulatedToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      simDateInput.value = formatDateStr(simulatedToday);
+      currentViewingMonth = new Date(simulatedToday.getFullYear(), simulatedToday.getMonth(), 1);
+      renderCalendar();
+      renderEventList();
+      showToast('基準日を本日に戻しました');
+    });
+
+    /* Filter Tabs */
+    document.querySelectorAll('.filter-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-tab-btn').forEach(b => {
+          b.classList.remove('bg-teal-600', 'text-white', 'active');
+          if (b.getAttribute('data-filter') === 'has-tasks') {
+            b.classList.add('bg-amber-50', 'text-amber-800');
+          } else {
+            b.classList.add('bg-slate-100', 'text-slate-700');
+          }
+        });
+        const target = e.currentTarget;
+        target.classList.remove('bg-slate-100', 'text-slate-700', 'bg-amber-50', 'text-amber-800');
+        target.classList.add('bg-teal-600', 'text-white', 'active');
+
+        activeFilter = target.getAttribute('data-filter');
+        renderEventList();
+      });
+    });
+
+    /* Export JSON Data (Events + Tasks + Presets) */
+    document.getElementById('exportDataBtn').addEventListener('click', () => {
+      const payload = {
+        version: '3.0',
+        exportedAt: new Date().toISOString(),
+        events: events,
+        annualPresets: annualPresets
+      };
+      const dataStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `circle_sync_full_tasks_backup_${formatDateStr(new Date())}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('全データ（タスク・プリセット含む）をJSON出力しました');
+    });
+
+    /* Import JSON Data */
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported.events && Array.isArray(imported.events)) {
+            events = imported.events;
+            if (imported.annualPresets && Array.isArray(imported.annualPresets)) {
+              annualPresets = imported.annualPresets;
+              saveAnnualPresetsToStorage();
+            }
+            saveEventsToStorage();
+            renderCalendar();
+            renderEventList();
+            document.getElementById('dataModal').classList.add('hidden');
+            showToast('スケジュールとタスクを正常に復元しました！');
+          } else if (Array.isArray(imported)) {
+            events = imported;
+            saveEventsToStorage();
+            renderCalendar();
+            renderEventList();
+            document.getElementById('dataModal').classList.add('hidden');
+            showToast(`${imported.length}件の予定を読み込みました！`);
+          } else {
+            showToast('対応していないファイル形式です', 'error');
+          }
+        } catch (err) {
+          showToast('JSONファイルの読み込みに失敗しました', 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    /* Clear All Calendar Events */
+    document.getElementById('clearAllEventsBtn').addEventListener('click', () => {
+      events = [];
+      saveEventsToStorage();
+      renderCalendar();
+      renderEventList();
+      document.getElementById('dataModal').classList.add('hidden');
+      showToast('カレンダーの予定を初期化しました');
+    });
+
+    /* Sample Loader with real tasks */
+    function loadSamplePresetEvents() {
+      const curYear = simulatedToday.getFullYear();
+      const curMonth = simulatedToday.getMonth();
+
+      const sample1EventDate = formatDateStr(new Date(curYear, curMonth + 1, 1));
+      const sample1StartDate = formatDateStr(new Date(curYear, curMonth, 2));
+      const sample1EndDate = formatDateStr(new Date(curYear, curMonth, 18));
+
+      const sample3EventDate = formatDateStr(new Date(curYear, curMonth + 1, 28));
+      const sample3StartDate = formatDateStr(new Date(curYear, curMonth, 14));
+      const sample3EndDate = formatDateStr(new Date(curYear, curMonth + 1, 7));
+
+      events = [
+        {
+          id: 'evt-sample-1',
+          title: '大学祭（秋学祭）模擬店 & ステージ出店',
+          eventDate: sample1EventDate,
+          voteStartDate: sample1StartDate,
+          voteEndDate: sample1EndDate,
+          category: 'festival',
+          recurrence: 'none',
+          startOffset: 30,
+          endOffset: 14,
+          location: '大学メインキャンパス第2グラウンド',
+          notes: '模擬店（焼きそば）の仕込みとシフト作成のため、2週間前までに確定参加人数を把握します。',
+          tasks: [
+            { id: 'tsk-s1-1', title: '出店届・模擬店申請の提出', category: 'place', dueDate: formatDateStr(new Date(curYear, curMonth, 5)), assignee: '代表', completed: true },
+            { id: 'tsk-s1-2', title: '出店参加費・材料費予算の決定', category: 'money', dueDate: formatDateStr(new Date(curYear, curMonth, 10)), assignee: '会計', completed: true },
+            { id: 'tsk-s1-3', title: 'シフト募集の全体LINEアナウンス', category: 'announce', dueDate: formatDateStr(new Date(curYear, curMonth, 12)), assignee: '広報', completed: false },
+            { id: 'tsk-s1-4', title: '食材・調理機材の購入と業者支払い', category: 'money', dueDate: formatDateStr(new Date(curYear, curMonth, 25)), assignee: '買い出し班', completed: false },
+            { id: 'tsk-s1-5', title: '売上集金とサークル口座への入金', category: 'money', dueDate: sample1EventDate, assignee: '会計', completed: false }
+          ]
+        },
+        {
+          id: 'evt-sample-2',
+          title: '週次・定例ミーティング',
+          eventDate: formatDateStr(new Date(curYear, curMonth, 19)),
+          voteStartDate: formatDateStr(new Date(curYear, curMonth, 12)),
+          voteEndDate: formatDateStr(new Date(curYear, curMonth, 17)),
+          category: 'meeting',
+          recurrence: 'weekly',
+          recurrenceUntil: formatDateStr(new Date(curYear, curMonth + 2, 28)),
+          startOffset: 7,
+          endOffset: 2,
+          location: '学生会館 第3会議室 / Zoom',
+          notes: '資料作成とアジェンダ確定のため、2日前までに参加可否をご回答ください。',
+          tasks: [
+            { id: 'tsk-s2-1', title: 'アジェンダ共有と告知', category: 'announce', dueDate: formatDateStr(new Date(curYear, curMonth, 17)), assignee: '書記', completed: false }
+          ]
+        },
+        {
+          id: 'evt-sample-3',
+          title: 'サークル開発合宿（1泊2日）',
+          eventDate: sample3EventDate,
+          voteStartDate: sample3StartDate,
+          voteEndDate: sample3EndDate,
+          category: 'camp',
+          recurrence: 'none',
+          startOffset: 45,
+          endOffset: 21,
+          location: '箱根セミナーハウス',
+          notes: 'コテージのキャンセル料発生が3週間前のため締め切り厳守でお願いします。',
+          tasks: [
+            { id: 'tsk-s3-1', title: '宿・コテージの仮予約', category: 'place', dueDate: formatDateStr(new Date(curYear, curMonth, 10)), assignee: '合宿係', completed: true },
+            { id: 'tsk-s3-2', title: 'レンタカー・配車手配', category: 'place', dueDate: formatDateStr(new Date(curYear, curMonth, 18)), assignee: '合宿係', completed: false },
+            { id: 'tsk-s3-3', title: '合宿参加費（1人18,000円）の決定', category: 'money', dueDate: formatDateStr(new Date(curYear, curMonth, 20)), assignee: '会計', completed: false },
+            { id: 'tsk-s3-4', title: '参加費の事前集金締切', category: 'money', dueDate: formatDateStr(new Date(curYear, curMonth + 1, 15)), assignee: '会計', completed: false },
+            { id: 'tsk-s3-5', title: '宿泊施設への残金振り込み支払い', category: 'money', dueDate: sample3EventDate, assignee: '会計', completed: false }
+          ]
+        }
+      ];
+
+      saveEventsToStorage();
+      renderCalendar();
+      renderEventList();
+      showToast('タスク付きのサンプル予定を読み込みました！');
+    }
+
+    document.getElementById('loadSampleDataBtn').addEventListener('click', () => {
+      loadSamplePresetEvents();
+      document.getElementById('guideModal').classList.add('hidden');
+    });
+
+    /* General Modal Handlers */
+    document.getElementById('openNewEventModalBtn').addEventListener('click', () => openNewEventModal());
+    document.getElementById('closeEventModalBtn').addEventListener('click', () => document.getElementById('eventModal').classList.add('hidden'));
+    document.getElementById('cancelModalBtn').addEventListener('click', () => document.getElementById('eventModal').classList.add('hidden'));
+    
+    document.getElementById('closeDetailModalBtn').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
+    document.getElementById('closeDetailBtn2').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
+    document.getElementById('editFromDetailBtn').addEventListener('click', () => {
+      if (currentDetailEvt) {
+        const targetId = currentDetailEvt.originalEventId || currentDetailEvt.id;
+        openEditModal(targetId);
+      }
+    });
+
+    document.getElementById('openGuideBtn').addEventListener('click', () => document.getElementById('guideModal').classList.remove('hidden'));
+    document.getElementById('closeGuideModalBtn').addEventListener('click', () => document.getElementById('guideModal').classList.add('hidden'));
+    document.getElementById('closeGuideModalBtn2').addEventListener('click', () => document.getElementById('guideModal').classList.add('hidden'));
+
+    document.getElementById('openDataModalBtn').addEventListener('click', () => document.getElementById('dataModal').classList.remove('hidden'));
+    document.getElementById('closeDataModalBtn').addEventListener('click', () => document.getElementById('dataModal').classList.add('hidden'));
+    document.getElementById('closeDataModalBtn2').addEventListener('click', () => document.getElementById('dataModal').classList.add('hidden'));
+
+    // Clear selection on background click
+    document.addEventListener('click', (e) => {
+      if (!highlightedInstanceId) return;
+      if (
+        e.target.closest('#eventModal') ||
+        e.target.closest('#detailModal') ||
+        e.target.closest('#recurringActionModal') ||
+        e.target.closest('#printModal') ||
+        e.target.closest('#guideModal') ||
+        e.target.closest('#dataModal') ||
+        e.target.closest('#sheetModal') ||
+        e.target.closest('#annualModal') ||
+        e.target.closest('#annualEditModal') ||
+        e.target.closest('.event-card-item') ||
+        e.target.closest('[data-instance-id]') ||
+        e.target.closest('button') ||
+        e.target.closest('input') ||
+        e.target.closest('select') ||
+        e.target.closest('textarea')
+      ) {
+        return;
+      }
+      clearScheduleHighlight();
+    });
+
+    document.getElementById('clearHighlightBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearScheduleHighlight();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && highlightedInstanceId) {
+        const isAnyModalOpen = [
+          'eventModal',
+          'detailModal',
+          'recurringActionModal',
+          'printModal',
+          'guideModal',
+          'dataModal',
+          'sheetModal',
+          'annualModal',
+          'annualEditModal'
+        ].some(id => !document.getElementById(id).classList.contains('hidden'));
+
+        if (!isAnyModalOpen) {
+          clearScheduleHighlight();
+        }
+      }
+    });
+
+    window.onload = function () {
+      renderCalendar();
+      renderEventList();
+    };
+  </script>
+</body>
+</html>
